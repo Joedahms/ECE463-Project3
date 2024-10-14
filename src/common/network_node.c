@@ -42,90 +42,6 @@ void checkCommandLineArguments(int argc, char** argv, uint8_t* debugFlag) {
 }
 
 /*
- * Name: networkNodeConnect
- * Purpose: Connect to another IPV4 socket via TCP
- * Input: 
- * - Name of the node to connect to
- * - Socket on calling node process
- * - addrinfo structure containing information about node to connect to
- * Output: 
- * - Connected socket descriptor
- */
-int networkNodeConnect(const char* nodeName, int socketDescriptor, struct sockaddr* destinationAddress, socklen_t destinationAddressLength) {
-  printf("Connecting to %s...\n", nodeName);
-  int connectionStatus;
-  connectionStatus = connect(socketDescriptor, destinationAddress, destinationAddressLength);
-  // Check if connection was successful
-  if (connectionStatus != 0) {
-    char* errorMessage = malloc(1024);
-    strcpy(errorMessage, strerror(errno));
-    printf("Connection to %s failed with error %s\n", nodeName, errorMessage);
-    exit(1);
-  }
-  printf("Connected to %s...\n", nodeName);
-  return socketDescriptor;
-}
-
-/*
- * Name: sendBytes
- * Purpose: Send a desired number of bytes out on a Socket
- * Input:
- * - Socket Descriptor of the socket to send the bytes with
- * - Buffer containing the bytes to send
- * - Amount of bytes to send
- * - Debug flag
- * Output: Number of bytes sent
- */
-int sendBytes(int socketDescriptor, const char* buffer, unsigned long int bufferSize, uint8_t debugFlag) {
-  if (debugFlag) {
-    printf("Bytes to be sent:\n\n");
-    int i;
-    for (i = 0; i < bufferSize; i++) {
-      printf("%c", buffer[i]);
-    }
-    printf("\n\n");
-  }
-
-  int bytesSent = 0;
-  bytesSent = send(socketDescriptor, buffer, bufferSize, 0);
-  if (bytesSent == -1) {  
-    char* errorMessage = malloc(1024);
-    strcpy(errorMessage, strerror(errno));
-    printf("Byte send failed with error %s\n", errorMessage);
-    exit(1);
-  }
-  else {
-    return bytesSent;
-  }
-}
-
-/*
- * Name: receiveBytes
- * Purpose: This function is for receiving a set number of bytes into
- * a buffer
- * Input: 
- * - Socket Descriptor of the accepted transmission
- * - Buffer to put the received data into
- * - The size of the message to receive in bytes
- * Output: 
- * - The number of bytes received into the buffer
- */
-int receiveBytes(int incomingSocketDescriptor, char* buffer, int bufferSize, uint8_t debugFlag) {
-  int numberOfBytesReceived = 0;
-  numberOfBytesReceived = recv(incomingSocketDescriptor, buffer, bufferSize, 0);
-  if (debugFlag) {
-    // Print out incoming message
-    int i;
-    printf("Bytes received: \n");
-    for (i = 0; i < numberOfBytesReceived; i++) {
-      printf("%c", buffer[i]);
-    }
-    printf("\n");
-  }
-  return numberOfBytesReceived;
-}
-
-/*
   * Name: sendUdpMessage
   * Purpose: Send a message via UDP
   * Input: 
@@ -153,23 +69,6 @@ void sendUdpMessage(int udpSocketDescriptor, struct sockaddr_in destinationAddre
   }
   else {
     printf("UDP message sent\n");
-  }
-}
-
-/*
- * Name: checkStringForCommand
- * Purpose: Check if a string has a command in it
- * Input: String that might have a command
- * Ouptut: 
- * - 0: String is not a command
- * - 1: String is a command
- */
-int checkStringForCommand(const char* userInput) {
-  if (userInput[0] == '%') {  // Check first character for '%'
-    return 1; // User entered command
-  }
-  else {
-    return 0; // User entered plain text
   }
 }
 
@@ -273,20 +172,6 @@ int writeFile(char* fileName, char* fileContents, size_t fileSize) {
 }
 
 /*
-  * Name: fileNameFromCommand
-  * Purpose: Extract the file name from a command
-  * Input: 
-  * - The user input/command
-  * - String to return the file name in
-  * Output: None
-*/
-void fileNameFromCommand(char* userInput, char* fileName) {
-  char* tempUserInput = userInput;
-  tempUserInput += 5;
-  strcpy(fileName, tempUserInput);
-}
-
-/*
   * Name: checkUdpSocket
   * Purpose: Check if there is an incoming message on a UDP port. If there is then
   * return an integer depending on the type of message
@@ -315,27 +200,9 @@ int checkUdpSocket(int listeningUDPSocketDescriptor, struct sockaddr_in* incomin
   
   // Print out UDP message
   printReceivedMessage(*incomingAddress, bytesReceived, message, debugFlag); 
-
-  if (strncmp(message, "$address=", 9) == 0) {    // Received info about TCP/UDP relation
-    printf("Received TCP/UDP relation info\n");
-    return 1;                                     // Return 1
-  }
-  else if (checkStringForCommand(message) == 0) { // Message is plain text
-    printf("Received plain text\n");
-    return 2;                                     // return 2
-  }
-  else if (strncmp(message, "%put ", 5) == 0) {   // Received put command
-    printf("Received put command\n"); 
-    return 3;                                     // Return 3
-  }
-  else if (strncmp(message, "%get ", 5) == 0) {   // Received get command
-    printf("Received get command\n");
-    return 4;                                     // Return 4
-  }
-  else {                                          // Received invalid command
-    printf("Received invalid command\n");
-    return 5;                                     // Return 5
-  }
+  return 0;
+  
+  // message
 }
 
 /*
