@@ -1,0 +1,264 @@
+joe@joe-IdeaPad-Slim-7-14ITL05:~/Documents/school/ECE463/Project01/C_Version$ ls
+client_code  common  Flowcharts  makefile  project1.ps  README.md  server_code
+joe@joe-IdeaPad-Slim-7-14ITL05:~/Documents/school/ECE463/Project01/C_Version$ make
+gcc -c -g server_code/server.c
+gcc -c -g common/network_node.c
+gcc server.o network_node.o -o server
+mv server server_code
+gcc -c -g client_code/client.c
+gcc client.o network_node.o -o client
+mv client client_code
+joe@joe-IdeaPad-Slim-7-14ITL05:~/Documents/school/ECE463/Project01/C_Version$ cd server_code;ls
+server  server.c  server.h
+joe@joe-IdeaPad-Slim-7-14ITL05:~/Documents/school/ECE463/Project01/C_Version/server_code$ ./server
+Running server in normal mode
+Setting up socket...
+Socket set up
+Binding socket...
+Socket bound
+Listening for connections...
+Connection accepted
+Listening for data...
+Listening for connections...
+Connection accepted
+Listening for data...
+Listening for connections...
+Receiving Packet...
+93 byte packet received:
+Parsing packet...
+Checking for beginning of message...
+Beginning of message found
+Checking command...
+Command found: put
+Checking file name...
+File name:
+client.h
+Checking file contents...
+Opening received file...
+Received file opened
+Writing received file...
+Received file written
+Receiving Packet...
+4539 byte packet received:
+Parsing packet...
+Checking for beginning of message...
+Beginning of message found
+Checking command...
+Command found: put
+Checking file name...
+File name:
+client.c
+Checking file contents...
+Opening received file...
+Received file opened
+Writing received file...
+Received file written
+Receiving Packet...
+51 byte packet received:
+Parsing packet...
+Checking for beginning of message...
+Beginning of message found
+Checking command...
+Command found: get
+Checking file name...
+File name:
+server.h
+Allocated 5000 byte packet
+Added 12 byte beginning of message to packet
+Added 3 byte put command to packet
+Added 9 byte delimiter to packet
+Added 8 byte file name to packet
+Added 9 byte delimiter to packet
+Adding contents of server.h to packet
+Opening file server.h...
+File server.h opened
+server.h is 42 bytes
+Reading file...
+42 bytes read from server.h
+Added 42 byte file contents to packet
+Added 10 byte message end to packet
+93 byte packet to be sent: messageBeginputdelimFlagserver.hdelimFlag#ifndef SERVER_H
+#define SERVER_H
+
+#endif
+messageEnd
+Sending packet...
+93 byte packet sent
+Receiving Packet...
+51 byte packet received:
+Parsing packet...
+Checking for beginning of message...
+Beginning of message found
+Checking command...
+Command found: get
+Checking file name...
+File name:
+server.c
+Allocated 5000 byte packet
+Added 12 byte beginning of message to packet
+Added 3 byte put command to packet
+Added 9 byte delimiter to packet
+Added 8 byte file name to packet
+Added 9 byte delimiter to packet
+Adding contents of server.c to packet
+Opening file server.c...
+File server.c opened
+server.c is 4172 bytes
+Reading file...
+4172 bytes read from server.c
+Added 4172 byte file contents to packet
+Added 10 byte message end to packet
+4223 byte packet to be sent: messageBeginputdelimFlagserver.cdelimFlag#define FILE_NAME_SIZE 50
+
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <signal.h>
+
+#include "../common/network_node.h"
+#include "server.h"
+
+// Global flags
+uint8_t debugFlag = 0;  // Can add conditional statements with this flag to print out extra info
+
+// Global variables (for signal handler)
+struct addrinfo* serverAddressInfo;
+int socketDescriptor;
+int incomingSocketDescriptor;
+
+// Forward declarations
+void shutdownServer(int);
+
+// Main fucntion
+int main(int argc, char* argv[]) {
+  signal(SIGINT, shutdownServer);
+
+  packetFields serverPacketFields;
+  serverPacketFields.delimiter = "delimFlag";
+  serverPacketFields.messageBegin = "messageBegin";
+  serverPacketFields.messageEnd = "messageEnd";
+  serverPacketFields.putCommand = "put";
+  serverPacketFields.getCommand = "get";
+
+
+  // Check how many command line areguements passed
+	switch (argc) {
+		case 1:
+			printf("Running server in normal mode\n");
+			break;
+		case 2:
+			if (strcmp(argv[1], "-d") == 0) {
+				debugFlag = 1;
+				printf("Running server in debug mode\n");
+			}
+			break;
+		default:
+	}
+
+	int status;
+	struct addrinfo hints;
+
+	hints.ai_family = AF_INET;        // IPV4
+	hints.ai_socktype = SOCK_STREAM;  // TCP
+	hints.ai_protocol = 0;            // Any protocol
+	hints.ai_flags = AI_PASSIVE;      // If node is null, will bind to IP of host
+	
+  // Port 3940
+	int getaddrinfoReturnValue;
+	getaddrinfoReturnValue = getaddrinfo(NULL, "3940", &hints, &serverAddressInfo);
+	if (getaddrinfoReturnValue != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(getaddrinfoReturnValue));	
+		exit(EXIT_FAILURE);
+	}
+  
+  // Set up socket
+  printf("Setting up socket...\n");
+  socketDescriptor = socket(serverAddressInfo->ai_family, serverAddressInfo->ai_socktype, 0);
+  printf("Socket set up\n");
+
+  // Bind socket
+  printf("Binding socket...\n");
+  bind(socketDescriptor, serverAddressInfo->ai_addr, serverAddressInfo->ai_addrlen);
+  printf("Socket bound\n");
+	
+  // Listen
+  listen(socketDescriptor, 10);		// Limit queued connections to 10
+
+  struct sockaddr incomingAddress;
+  int incomingSocketDescriptor;
+  socklen_t sizeOfIncomingAddress = sizeof(incomingAddress);
+
+  pid_t processId;
+
+  // Continously listen for new packets
+  while (1) {
+    // Accept the incoming connection
+    printf("Listening for connections...\n");
+    incomingSocketDescriptor = accept(socketDescriptor, &incomingAddress, &sizeOfIncomingAddress);
+    printf("Connection accepted\n");
+    printf("Listening for data...\n");
+    
+    if ((processId = fork()) == 0) {
+      close(socketDescriptor); 
+      uint8_t clientAlive = 1;
+
+      // Process incoming data
+//      char* incomingFileName = malloc(FILE_NAME_SIZE);      // Space for file name
+      fcntl(incomingSocketDescriptor, F_SETFL, O_NONBLOCK); // Set socket to non blocking (will return if no data available)
+      int receivePacketReturn;
+
+      while(clientAlive) {
+        char* incomingFileName = malloc(FILE_NAME_SIZE);      // Space for file name
+        receivePacketReturn = receivePacket(incomingSocketDescriptor, incomingFileName, FILE_NAME_SIZE, serverPacketFields, debugFlag);
+        switch (receivePacketReturn) {
+          case 0: // get command
+            sendPacket(incomingFileName, incomingSocketDescriptor, serverPacketFields, serverPacketFields.putCommand, debugFlag); // Send back the requested file
+            break;
+          case 1: // Client connection closed
+            clientAlive = 0;
+            break;
+          default:  // put command or error (need to improve)
+            break;
+        }
+      }
+
+      printf("Connection terminated\n");
+      exit(0);
+    }
+    close(incomingSocketDescriptor);
+  }
+  return 0;
+}
+
+/*
+* Name: shutdownServer
+* Purpose: Gracefully shutdown the server when the user enters
+* ctrl-c. Closes the sockets and frees addrinfo data structure
+* Input: The signal raised
+* Output: None
+*/
+void shutdownServer(int signal) {
+  close(incomingSocketDescriptor);
+  close(socketDescriptor);
+	freeaddrinfo(serverAddressInfo);
+  printf("\n");
+  exit(0);
+}
+messageEnd
+Sending packet...
+4223 byte packet sent
+Client closed connection
+Connection terminated
+Client closed connection
+Connection terminated
+^C
+joe@joe-IdeaPad-Slim-7-14ITL05:~/Documents/school/ECE463/Project01/C_Version/server_code$ ls
+client.c  client.h  server  server.c  server.h
+
+
