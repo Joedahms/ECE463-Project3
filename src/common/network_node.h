@@ -22,22 +22,12 @@
 #include <stdint.h>
 
 void checkCommandLineArguments(int, char**, uint8_t*);                  // Check how many command line arguments passed
-int networkNodeConnect(const char*, int, struct sockaddr*, socklen_t);  // Connect to another network node
-
-// Functions to send and receive messages
-int sendBytes(int, const char*, unsigned long int, uint8_t);            // Send bytes with send()
-int receiveBytes(int, char*, int, uint8_t);                             // Receive bytes with recv()
 void sendUdpMessage(int, struct sockaddr_in, char*, uint8_t);           // Send a message over UDP
-
-int checkStringForCommand(const char*);                                 // Checks a string for if it is a command
-
 void printReceivedMessage(struct sockaddr_in, int, char*, uint8_t);     // Print out message along with its source
 
 // File I/O
 int readFile(char*, char*, uint8_t);                                    // Read from a file with read()
 int writeFile(char*, char*, size_t);                                    // Write to a file with write()
-
-void fileNameFromCommand(char*, char*);                                 // Pull out the filename from a command string
 
 int checkUdpSocket(int, struct sockaddr_in*, char*, uint8_t);           // Check a UDP socket to see if it has any data in the queue
 int handleErrorNonBlocking(int);                                        // Handle error when "reading" from non blocking socket
