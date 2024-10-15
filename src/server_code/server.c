@@ -19,6 +19,7 @@ uint8_t debugFlag = 0;  // Can add conditional statements with this flag to prin
 
 // Global variables (for signal handler)
 int listeningUDPSocketDescriptor;
+char* message;
 
 // Array of connected client data structures
 struct connectedClient connectedClients[MAX_CONNECTED_CLIENTS];
@@ -36,7 +37,6 @@ int main(int argc, char* argv[]) {
 
   // Initialize socket address stuctures
   struct sockaddr_in serverAddress;                   // Socket address that clients should connect to
-                                                      // Same port is used for both UDP and TCP connections
   struct sockaddr_in clientUDPAddress;                // Client's UDP info
 
   // Set up server sockaddr_in data structure
@@ -47,9 +47,9 @@ int main(int argc, char* argv[]) {
   
   checkCommandLineArguments(argc, argv, &debugFlag);  // Check if user passed any arguments
 
-  setupUdpSocket(serverAddress);                      // Setup the UDP socket
+  listeningUDPSocketDescriptor = setupUdpSocket(serverAddress, 1);                      // Setup the UDP socket
   
-  char* message = malloc(INITIAL_MESSAGE_SIZE);       // Space for incoming messages
+  message = malloc(INITIAL_MESSAGE_SIZE);       // Space for incoming messages
   
   // Whether or not data is available at the socket. If it is, what kind.
   int udpStatus;
@@ -59,10 +59,16 @@ int main(int argc, char* argv[]) {
     udpStatus = checkUdpSocket(listeningUDPSocketDescriptor, &clientUDPAddress, message, debugFlag);  // Check the UDP socket
     switch (udpStatus) {
       case 0:                                         // Nothing
+
       break;
 
       case 1:                                         // Something
+      int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);
+      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;
+      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;
+      printAllConnectedClients();
       break;
+
       default:  // Invalid message received
     }
   } // while(1)
@@ -77,41 +83,10 @@ int main(int argc, char* argv[]) {
 * Output: None
 */
 void shutdownServer(int signal) {
+  free(message);
   close(listeningUDPSocketDescriptor);
   printf("\n");
   exit(0);
-}
-
-/*
- * Name: setupUdpSocket
- * Purpose: Setup the UDP socket. Set it to non blocking. Bind it. 
- * Input: Address structure to bind to.
- * Output: None
-*/
-void setupUdpSocket(struct sockaddr_in serverAddress) {
-  // Set up UDP socket
-  printf("Setting up UDP socket...\n");
-  listeningUDPSocketDescriptor = socket(AF_INET, SOCK_DGRAM, 0);
-  if (listeningUDPSocketDescriptor == -1) {
-    perror("Error when setting up UDP socket");
-    exit(1);
-  }
-
-  // Set non blocking
-  int fcntlReturn = fcntl(listeningUDPSocketDescriptor, F_SETFL, O_NONBLOCK); // Set to non blocking
-  if (fcntlReturn == -1) {
-    perror("Error when setting UDP socket non blocking");
-  }
-  printf("UDP socket set up\n");
-
-  // Bind UDP socket
-  printf("Binding UDP socket...\n");
-  int bindReturnUDP = bind(listeningUDPSocketDescriptor, (struct sockaddr *)&serverAddress, sizeof(serverAddress)); // Bind
-  if (bindReturnUDP == -1) {
-    perror("Error when binding UDP socket");
-    exit(1);
-  }
-  printf("UDP socket bound\n");
 }
 
 /*

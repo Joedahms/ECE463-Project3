@@ -1,7 +1,7 @@
 #ifndef PACKET_H
 #define PACKET_H
 
-#define MAX_CONNECTION_PACKET_SIZE 200
+#define CONNECTION_PACKET_SIZE 200
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -13,7 +13,6 @@ struct ConnectionPacket {
   char end[20];
 };
 
-//void initializePacket();
 void buildConnectionPacket(char*, struct sockaddr_in);
 
 #endif

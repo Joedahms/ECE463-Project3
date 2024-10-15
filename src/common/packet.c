@@ -7,13 +7,15 @@
 
 #include "packet.h"
 
-struct ConnectionPacket connectionPacket = {"startconnect", "$", "endconnect"};
+struct ConnectionPacket connectionPacket = {
+  "startconnect",
+  "$",
+  "endconnect"
+};
 
 void buildConnectionPacket(char* builtPacket, struct sockaddr_in packetSource) {
-  strncat(builtPacket, connectionPacket.beginning, strlen(connectionPacket.beginning));
-  unsigned long sourceAddressInt = ntohl(packetSource.sin_addr.s_addr);
-  printf("%ld\n", sourceAddressInt);
-  char* sourceAddressString = malloc(20);
-  snprintf(sourceAddressString, 20, "%ld", sourceAddressInt);
-  printf("%s\n", sourceAddressString);
+  strncat(builtPacket, connectionPacket.beginning, strlen(connectionPacket.beginning)); // Add beginning field to packet
+  char username[20] = "username";                                                       // Hard coded username for now
+  strncat(builtPacket, connectionPacket.end, strlen(connectionPacket.end));             // Add end field to packet
+
 }

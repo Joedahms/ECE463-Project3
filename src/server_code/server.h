@@ -7,7 +7,6 @@ struct connectedClient {
 };
 
 void shutdownServer(int);                                 // Gracefully shutdown the server
-void setupUdpSocket(struct sockaddr_in);                  // Setup a UDP socket
 int findEmptyConnectedClient(uint8_t);                    // Find an empty connectedClient in an array of them
 void printAllConnectedClients();                          // Print out all connected clients. Debug purposes
 
