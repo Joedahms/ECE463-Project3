@@ -13,6 +13,7 @@
 #include <errno.h>
 
 #include "../common/network_node.h"
+#include "../common/packet.h"
 #include "client.h"
 
 // Global flags
@@ -20,11 +21,13 @@ uint8_t debugFlag = 0;  // Can add conditional statements with this flag to prin
 
 // Global variables (for signal handler)
 int udpSocketDescriptor;
-
+char* userInput;
 // Main
 int main(int argc, char* argv[]) {
   // Assign callback function for ctrl-c
   signal(SIGINT, shutdownClient);
+
+  userInput = malloc(USER_INPUT_BUFFER_LENGTH);
   
   // Socket address data structure of the server
   struct sockaddr_in serverAddress;
@@ -37,17 +40,19 @@ int main(int argc, char* argv[]) {
   // Check command line arguments
   checkCommandLineArguments(argc, argv, &debugFlag);
  
-  // Setup socket
-	udpSocketDescriptor = socket(AF_INET, SOCK_DGRAM, 0);
+  // Setup UDP socket and store its info
+  struct sockaddr_in udpAddress;                                                    // Will leave empty because do not need to bind
+  memset(&udpAddress, 0, sizeof(udpAddress));                                       // 0 out
+  udpSocketDescriptor = setupUdpSocket(udpAddress, 0);                              // Setup udp socket without binding
+  char* connectionPacket = malloc(CONNECTION_PACKET_SIZE);                          // Allocate connection packet
+  buildConnectionPacket(connectionPacket, udpAddress);                              // Build connection packet with appropriate fields
+  sendUdpMessage(udpSocketDescriptor, serverAddress, connectionPacket, debugFlag);  // Send connection packet to the server
+  free(connectionPacket);                                                           // Free connection packet
 
   fd_set read_fds;
 
-  char* message = malloc(1000);
-  struct sockaddr_in address;
-
   // Constantly check user input
   while(1) {
-
     // Use select to handle user input and server messages simultaneously
     FD_ZERO(&read_fds);
     FD_SET(0, &read_fds);  // 0 is stdin (for user input)
@@ -61,7 +66,6 @@ int main(int argc, char* argv[]) {
 
     if (FD_ISSET(0, &read_fds)) {
       // Get user input and store in userInput buffer
-      char* userInput = malloc(USER_INPUT_BUFFER_LENGTH);
       getUserInput(userInput);
 
       // User just pressed return
@@ -83,8 +87,8 @@ int main(int argc, char* argv[]) {
  * Output: None
  */
 void shutdownClient(int signal) {
+  free(userInput);            // Free user input
   close(udpSocketDescriptor); // Close UDP socket
-//  close(tcpSocketDescriptor); // Close TCP socket
   printf("\n");
   exit(0);
 }

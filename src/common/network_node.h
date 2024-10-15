@@ -29,6 +29,7 @@ void printReceivedMessage(struct sockaddr_in, int, char*, uint8_t);     // Print
 int readFile(char*, char*, uint8_t);                                    // Read from a file with read()
 int writeFile(char*, char*, size_t);                                    // Write to a file with write()
 
+int setupUdpSocket(struct sockaddr_in, uint8_t);                        // Setup a UDP socket
 int checkUdpSocket(int, struct sockaddr_in*, char*, uint8_t);           // Check a UDP socket to see if it has any data in the queue
 int handleErrorNonBlocking(int);                                        // Handle error when "reading" from non blocking socket
 

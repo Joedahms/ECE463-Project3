@@ -172,6 +172,44 @@ int writeFile(char* fileName, char* fileContents, size_t fileSize) {
 }
 
 /*
+ * Name: setupUdpSocket
+ * Purpose: Setup the UDP socket. Set it to non blocking. Bind it. 
+ * Input: Address structure to bind to.
+ * Output: None
+*/
+int setupUdpSocket(struct sockaddr_in serverAddress, uint8_t bindFlag) {
+  int udpSocketDescriptor;
+
+  // Set up UDP socket
+  printf("Setting up UDP socket...\n");
+  udpSocketDescriptor = socket(AF_INET, SOCK_DGRAM, 0);
+  if (udpSocketDescriptor == -1) {
+    perror("Error when setting up UDP socket");
+    exit(1);
+  }
+
+  // Set non blocking
+  int fcntlReturn = fcntl(udpSocketDescriptor, F_SETFL, O_NONBLOCK); // Set to non blocking
+  if (fcntlReturn == -1) {
+    perror("Error when setting UDP socket non blocking");
+  }
+  printf("UDP socket set up\n");
+
+  if (!bindFlag) {              // If bind flag is not set
+    return udpSocketDescriptor; // Return and do not bind the socket
+  }
+  // Bind UDP socket
+  printf("Binding UDP socket...\n");
+  int bindReturnUDP = bind(udpSocketDescriptor, (struct sockaddr *)&serverAddress, sizeof(serverAddress)); // Bind
+  if (bindReturnUDP == -1) {
+    perror("Error when binding UDP socket");
+    exit(1);
+  }
+  printf("UDP socket bound\n");
+  return udpSocketDescriptor;
+}
+
+/*
   * Name: checkUdpSocket
   * Purpose: Check if there is an incoming message on a UDP port. If there is then
   * return an integer depending on the type of message
@@ -200,7 +238,7 @@ int checkUdpSocket(int listeningUDPSocketDescriptor, struct sockaddr_in* incomin
   
   // Print out UDP message
   printReceivedMessage(*incomingAddress, bytesReceived, message, debugFlag); 
-  return 0;
+  return 1;
   
   // message
 }
