@@ -13,6 +13,7 @@
 #include <errno.h>
 
 #include "../common/network_node.h"
+#include "../common/packet.h"
 #include "client.h"
 
 // Global flags
@@ -37,8 +38,21 @@ int main(int argc, char* argv[]) {
   // Check command line arguments
   checkCommandLineArguments(argc, argv, &debugFlag);
  
-  // Setup socket
+  // Setup UDP socket and store its info
 	udpSocketDescriptor = socket(AF_INET, SOCK_DGRAM, 0);
+  struct sockaddr_in udpAddress;
+  socklen_t udpAddressLength = sizeof(udpAddress);
+  getsockname(udpSocketDescriptor, (struct sockaddr *)&udpAddress, &udpAddressLength);
+
+  /*
+  char* port = malloc(50);
+  snprintf(port, 50, "%d", ntohs(udpAddress.sin_port));           // Convert the port to a string
+  pr
+  sendUdpMessage(udpSocketDescriptor, serverAddress, port, debugFlag);
+  */
+  char* clientConnectionPacket = malloc(MAX_CONNECTION_PACKET_SIZE);
+  printf("%d\n", ntohl(udpAddress.sin_addr.s_addr));
+  buildConnectionPacket(clientConnectionPacket, udpAddress);
 
   fd_set read_fds;
 
@@ -47,7 +61,9 @@ int main(int argc, char* argv[]) {
 
   // Constantly check user input
   while(1) {
-
+    
+    
+    
     // Use select to handle user input and server messages simultaneously
     FD_ZERO(&read_fds);
     FD_SET(0, &read_fds);  // 0 is stdin (for user input)
@@ -84,7 +100,6 @@ int main(int argc, char* argv[]) {
  */
 void shutdownClient(int signal) {
   close(udpSocketDescriptor); // Close UDP socket
-//  close(tcpSocketDescriptor); // Close TCP socket
   printf("\n");
   exit(0);
 }

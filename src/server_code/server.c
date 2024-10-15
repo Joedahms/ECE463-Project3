@@ -11,6 +11,7 @@
 #include <errno.h>
 
 #include "../common/network_node.h"
+#include "../common/packet.h"
 #include "server.h"
 
 // Global flags
@@ -62,28 +63,6 @@ int main(int argc, char* argv[]) {
 
       case 1:                                         // Something
       break;
-
-        // This is here temporarily for reference later
-        /*
-        // Find the connected client with the sent TCP address and port
-        // Then assign the UDP address and port it was sent to said connected client
-        int i; 
-        for (i = 0; i < MAX_CONNECTED_CLIENTS; i++) { // Loop through all connected clients
-          unsigned long connectedClientAddress = ntohl(connectedClients[i].socketTcpAddress.sin_addr.s_addr); // Connected client address
-          unsigned short connectedClientPort = ntohs(connectedClients[i].socketTcpAddress.sin_port);          // Connected client port
-
-          // Does what was sent match the current connected client?
-          if (tcpAddressInteger == connectedClientAddress && tcpPortInteger == connectedClientPort) {
-            connectedClients[i].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;          // Set UDP address
-            connectedClients[i].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                        // Set UDP port
-            break;                                                                                            // Don't loop through the rest of the connected clients
-          }
-        }
-        if (debugFlag) {
-          printAllConnectedClients(); 
-        }
-        break;  // Break case 1
-*/
       default:  // Invalid message received
     }
   } // while(1)
