@@ -22,6 +22,7 @@ uint8_t debugFlag = 0;  // Can add conditional statements with this flag to prin
 // Global variables (for signal handler)
 int udpSocketDescriptor;
 char* userInput;
+
 // Main
 int main(int argc, char* argv[]) {
   // Assign callback function for ctrl-c
@@ -40,12 +41,16 @@ int main(int argc, char* argv[]) {
   // Check command line arguments
   checkCommandLineArguments(argc, argv, &debugFlag);
  
-  // Setup UDP socket and store its info
+  // Setup UDP socket
   struct sockaddr_in udpAddress;                                                    // Will leave empty because do not need to bind
   memset(&udpAddress, 0, sizeof(udpAddress));                                       // 0 out
   udpSocketDescriptor = setupUdpSocket(udpAddress, 0);                              // Setup udp socket without binding
-  char* connectionPacket = malloc(CONNECTION_PACKET_SIZE);                          // Allocate connection packet
-  buildConnectionPacket(connectionPacket, udpAddress);                              // Build connection packet with appropriate fields
+
+  // Put together a connection packet
+  char* connectionPacket = malloc(CONNECTION_PACKET_SIZE);                          // Allocate connection packet string
+  struct ConnectionPacketFields connectionPacketFields;                             // Struct to store the fields to send
+  strcpy(connectionPacketFields.username, getenv("USER"));                          // Set the username of using the USER environment variable
+  buildConnectionPacket(connectionPacket, connectionPacketFields, debugFlag);       // Build the entire connection packet
   sendUdpMessage(udpSocketDescriptor, serverAddress, connectionPacket, debugFlag);  // Send connection packet to the server
   free(connectionPacket);                                                           // Free connection packet
 
