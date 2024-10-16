@@ -13,12 +13,14 @@
 struct ConnectionPacketDelimiters {
   char beginning[20]; // Beginning of the packet
   char middle[20];    // Seperate the fields of the packet
+  char resource[20];  // Seperate the resources
   char end[20];       // End of the packet
 };
 
 // Fields in a connection packet that will be set by the sender and read by the receiver
 struct ConnectionPacketFields {
   char username[USERNAME_SIZE];
+  char availableResources[RESOURCE_ARRAY_SIZE];
 };
 
 void buildConnectionPacket(char*, struct ConnectionPacketFields, uint8_t);  // Build a connection packet with the delimiters and the fields

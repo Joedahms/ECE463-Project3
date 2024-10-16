@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <errno.h>
+#include <dirent.h>
 
 #include "../common/network_node.h"
 #include "../common/packet.h"
@@ -22,6 +23,8 @@ uint8_t debugFlag = 0;  // Can add conditional statements with this flag to prin
 // Global variables (for signal handler)
 int udpSocketDescriptor;
 char* userInput;
+
+extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
 
 // Main
 int main(int argc, char* argv[]) {
@@ -46,9 +49,29 @@ int main(int argc, char* argv[]) {
   memset(&udpAddress, 0, sizeof(udpAddress));                                       // 0 out
   udpSocketDescriptor = setupUdpSocket(udpAddress, 0);                              // Setup udp socket without binding
 
-  // Put together a connection packet
-  char* connectionPacket = malloc(CONNECTION_PACKET_SIZE);                          // Allocate connection packet string
   struct ConnectionPacketFields connectionPacketFields;                             // Struct to store the fields to send
+  //
+  // Get available resources on client
+  char* availableResources = malloc(RESOURCE_ARRAY_SIZE);
+  const char* resourceDirectoryName = "Public";
+  DIR* resourceDirectoryStream = opendir(resourceDirectoryName);
+  struct dirent* resourceDirectoryEntry;
+  while((resourceDirectoryEntry = readdir(resourceDirectoryStream)) != NULL) {
+    const char* entryName = resourceDirectoryEntry->d_name;
+    if (strcmp(entryName, ".") == 0) {
+      continue;
+    }
+    if (strcmp(entryName, "..") == 0) {
+      continue;
+    }
+    strcat(availableResources, resourceDirectoryEntry->d_name);
+    strcat(availableResources, connectionPacketDelimiters.resource);
+  } 
+  printf("%s\n", availableResources);
+  strcpy(connectionPacketFields.availableResources, availableResources);
+
+  // Add username
+  char* connectionPacket = malloc(CONNECTION_PACKET_SIZE);                          // Allocate connection packet string
   strcpy(connectionPacketFields.username, getenv("USER"));                          // Set the username of using the USER environment variable
   buildConnectionPacket(connectionPacket, connectionPacketFields, debugFlag);       // Build the entire connection packet
   sendUdpMessage(udpSocketDescriptor, serverAddress, connectionPacket, debugFlag);  // Send connection packet to the server

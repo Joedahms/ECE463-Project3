@@ -5,6 +5,7 @@
 struct connectedClient {
   char username[USERNAME_SIZE];
   struct sockaddr_in socketUdpAddress;                    // Address structure of connected client's UDP socket
+  char availableResources[RESOURCE_ARRAY_SIZE];
 };
 
 void shutdownServer(int);                                 // Gracefully shutdown the server

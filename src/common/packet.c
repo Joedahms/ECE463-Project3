@@ -11,6 +11,7 @@
 struct ConnectionPacketDelimiters connectionPacketDelimiters = {
   "startconnect", // beginning 
   "$",            // middle
+  "%",
   "endconnect"    // end
 };
 
@@ -24,9 +25,13 @@ struct ConnectionPacketDelimiters connectionPacketDelimiters = {
   * Output: None
 */
 void buildConnectionPacket(char* builtPacket, struct ConnectionPacketFields connectionPacketFields, uint8_t debugFlag) {
-  strncat(builtPacket, connectionPacketDelimiters.beginning, strlen(connectionPacketDelimiters.beginning)); // Add beginning delimiter to packet
-  strncat(builtPacket, connectionPacketFields.username, strlen(connectionPacketFields.username));                                                         // Add username field to packet
-  strncat(builtPacket, connectionPacketDelimiters.end, strlen(connectionPacketDelimiters.end));             // Add end delimiter to packet
+  strcat(builtPacket, connectionPacketDelimiters.beginning); // Add beginning delimiter to packet
+  strcat(builtPacket, connectionPacketDelimiters.middle);
+  strcat(builtPacket, connectionPacketFields.username);                                                         // Add username field to packet
+  strcat(builtPacket, connectionPacketDelimiters.middle);
+  strcat(builtPacket, connectionPacketFields.availableResources);
+  strcat(builtPacket, connectionPacketDelimiters.middle);
+  strcat(builtPacket, connectionPacketDelimiters.end);             // Add end delimiter to packet
   if (debugFlag) {                                                                                          // If debug flag
     printf("Connection packet: %s\n", builtPacket);                                                         // Print out the whole packet
   }
@@ -42,16 +47,34 @@ void buildConnectionPacket(char* builtPacket, struct ConnectionPacketFields conn
 */
 int readConnectionPacket(char* packetToBeRead, struct ConnectionPacketFields* readPacketFields) {
   // Delimiters
-  char* beginning = connectionPacketDelimiters.beginning;
-  char* middle = connectionPacketDelimiters.middle;
-  char* end = connectionPacketDelimiters.end;
+  const char* beginning = connectionPacketDelimiters.beginning;
+  const char* middle = connectionPacketDelimiters.middle;
+  const char* resource = connectionPacketDelimiters.resource;
+  const char* end = connectionPacketDelimiters.end;
 
-  // Check if beginning of the packet is correct
-  if (strncmp(packetToBeRead, beginning, strlen(beginning)) != 0) {
+  // Beginning
+  if (strncmp(packetToBeRead, beginning, strlen(beginning)) != 0) {     // Check if the beginning of the packet is correct
     return -1;
   }
   packetToBeRead += strlen(beginning);                                  // Advance past the beginning
-  int usernameLength = strlen(packetToBeRead) - strlen(end);            // packet is now just username and end
-  strncpy(readPacketFields->username, packetToBeRead, usernameLength);  // Read the username into the returned type
+  if (strncmp(packetToBeRead, "$", 1) != 0) {                           // Make sure there is a middle delimiter after the beginning
+    return -1;
+  }
+  packetToBeRead++;                                                     // Past middle delimiter
+
+  // Username
+  while (strncmp(packetToBeRead, middle, 1) != 0) {                     // While not at the end of username
+    strncat(readPacketFields->username, packetToBeRead, 1); 
+    packetToBeRead++;
+  }
+  packetToBeRead++; // Past middle delimiter
+
+  // Available resources
+  while (strncmp(packetToBeRead, middle, 1) != 0) {                     // While not at the end of available resources
+    strncat(readPacketFields->availableResources, packetToBeRead, 1);
+    packetToBeRead++;
+  }
+  packetToBeRead++; // Past middle delimiter
+
   return 0;
 }

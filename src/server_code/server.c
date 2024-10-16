@@ -76,6 +76,8 @@ int main(int argc, char* argv[]) {
       strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);                    // username
       connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;  // UDP address
       connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                // UDP port
+      strcpy(connectedClients[emptyConnectedClientIndex].availableResources, connectionPacketFields.availableResources);                    
+      printf("test: %s\n", connectedClients[emptyConnectedClientIndex].availableResources);
       printAllConnectedClients();
       break;
 
@@ -143,10 +145,13 @@ void printAllConnectedClients() {
       continue;
     }
     char username[USERNAME_SIZE];                                             // Username
+    char availableResources[RESOURCE_ARRAY_SIZE];
     strcpy(username, connectedClients[i].username);
+    strcpy(availableResources, connectedClients[i].availableResources);
     printf("CONNECTED CLIENT %d\n", i);
     printf("USERNAME: %s\n", username);                                       // Print username
     printf("UDP ADDRESS: %ld\n", udpAddress);                                 // Print UDP address
     printf("UDP PORT: %d\n", udpPort);                                        // Print UDP port
+    printf("AVAILABLE RESOURCES: %s\n", availableResources);                                        // Print UDP port
   }
 }
