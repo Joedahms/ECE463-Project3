@@ -55,8 +55,11 @@ int main(int argc, char* argv[]) {
   struct ConnectionPacketFields connectionPacketFields;                             // Struct to store the fields to send
   
   // Get available resources on client and add to connection packet
-  char* availableResources = calloc(1, RESOURCE_ARRAY_SIZE);                           // Allocate space for the string of available resources
-  const char* resourceDirectoryName = "Public";                                     // Name of the directory where the resources are located
+  char* availableResources = calloc(1, RESOURCE_ARRAY_SIZE);                        // Allocate space for the string of available resources
+  if (getAvailableResources(availableResources, "Public") == -1) {
+    exit(1);
+  }
+  /*
   DIR* resourceDirectoryStream = opendir(resourceDirectoryName);                    // Open said directory
   if (resourceDirectoryStream == NULL) {
     perror("Error opening resource directory");
@@ -73,9 +76,11 @@ int main(int argc, char* argv[]) {
     strcat(availableResources, resourceDirectoryEntry->d_name);                     // Add the entry name to the available resources
     strcat(availableResources, connectionPacketDelimiters.resource);                // Add the resource delimiter to show end of resource
   } 
+  */
+
   strcpy(connectionPacketFields.availableResources, availableResources);            // Add the resource string to the connection packet
   free(availableResources);                                                         // Free available resources string
-  
+
   // Get username and add to connection packet
   char* connectionPacket = calloc(1, CONNECTION_PACKET_SIZE);                          // Allocate connection packet string
   strcpy(connectionPacketFields.username, getenv("USER"));                          // Set the username of using the USER environment variable
@@ -156,5 +161,27 @@ void receiveMessageFromServer() {
     } else {
         perror("Error receiving message from server");
     }
+}
+
+// Get available resources on client and add to connection packet
+int getAvailableResources(char* availableResources, const char* directoryName) {
+  DIR* directoryStream = opendir(directoryName);                      // Open resource directory
+  if (directoryStream == NULL) {                                      // Error opening the directory
+    return -1;
+    perror("Error opening resource directory");
+  }
+  struct dirent* directoryEntry;                                      // dirent structure for the entries in the resource directory
+  while((directoryEntry = readdir(directoryStream)) != NULL) {        // Loop through the entire resource directory
+    const char* entryName = directoryEntry->d_name;                   // Get the name of the entry
+    if (strcmp(entryName, ".") == 0) {                                // Ignore current directory
+      continue;
+    }
+    if (strcmp(entryName, "..") == 0) {                               // Ignore parent directory
+      continue;
+    }
+    strcat(availableResources, directoryEntry->d_name);               // Add the entry name to the available resources
+    strcat(availableResources, connectionPacketDelimiters.resource);  // Add the resource delimiter to show end of resource
+  } 
+  return 0;
 }
 

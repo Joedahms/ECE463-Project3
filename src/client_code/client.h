@@ -4,5 +4,6 @@
 void shutdownClient(int);                                             // Gracefully shutdown client
 void getUserInput(char*);                                             // Read user input from stdin
 void receiveMessageFromServer();                                      // Receive a message from the server
+int getAvailableResources(char*, const char*);
 
 #endif
