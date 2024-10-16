@@ -32,6 +32,14 @@ void buildConnectionPacket(char* builtPacket, struct ConnectionPacketFields conn
   }
 }
 
+/*
+  * Name: readConnectionPacket
+  * Purpose: Read a connection packet that has been sent
+  * Input:
+  * - String containing the packet that was sent
+  * - The fields read from the packet
+  * Output: Whether or not the packet is valid
+*/
 int readConnectionPacket(char* packetToBeRead, struct ConnectionPacketFields* readPacketFields) {
   // Delimiters
   char* beginning = connectionPacketDelimiters.beginning;

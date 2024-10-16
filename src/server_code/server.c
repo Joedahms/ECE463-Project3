@@ -47,9 +47,9 @@ int main(int argc, char* argv[]) {
   
   checkCommandLineArguments(argc, argv, &debugFlag);  // Check if user passed any arguments
 
-  listeningUDPSocketDescriptor = setupUdpSocket(serverAddress, 1);                      // Setup the UDP socket
+  listeningUDPSocketDescriptor = setupUdpSocket(serverAddress, 1);  // Setup the UDP socket
   
-  message = malloc(INITIAL_MESSAGE_SIZE);       // Space for incoming messages
+  message = malloc(INITIAL_MESSAGE_SIZE);             // Space for incoming messages
   
   // Whether or not data is available at the socket. If it is, what kind.
   int udpStatus;
@@ -63,6 +63,7 @@ int main(int argc, char* argv[]) {
       break;
 
       case 1:                                         // Something
+      // Read connection packet
       struct ConnectionPacketFields connectionPacketFields;
       uint8_t validPacket = readConnectionPacket(message, &connectionPacketFields);
       if (validPacket == -1) {
@@ -70,10 +71,11 @@ int main(int argc, char* argv[]) {
         continue;
       }
 
-      int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);
-      strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);
-      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;
-      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;
+      // Find an empty connection client and fill it out with the info from the connection packet
+      int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);                                              // Find an empty connected client
+      strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);                    // username
+      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;  // UDP address
+      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                // UDP port
       printAllConnectedClients();
       break;
 
@@ -135,16 +137,16 @@ void printAllConnectedClients() {
   unsigned long udpAddress;
   unsigned short udpPort;
   for (i = 0; i < MAX_CONNECTED_CLIENTS; i++) {
-    udpAddress = ntohl(connectedClients[i].socketUdpAddress.sin_addr.s_addr);
-    udpPort = ntohs(connectedClients[i].socketUdpAddress.sin_port);
-    if (udpAddress == 0 && udpPort == 0) {
+    udpAddress = ntohl(connectedClients[i].socketUdpAddress.sin_addr.s_addr); // UDP address
+    udpPort = ntohs(connectedClients[i].socketUdpAddress.sin_port);           // UDP port
+    if (udpAddress == 0 && udpPort == 0) {                                    // Check if the client is empty
       continue;
     }
-    char username[USERNAME_SIZE];
+    char username[USERNAME_SIZE];                                             // Username
     strcpy(username, connectedClients[i].username);
     printf("CONNECTED CLIENT %d\n", i);
-    printf("USERNAME: %s\n", username);
-    printf("UDP ADDRESS: %ld\n", udpAddress);
-    printf("UDP PORT: %d\n", udpPort);
+    printf("USERNAME: %s\n", username);                                       // Print username
+    printf("UDP ADDRESS: %ld\n", udpAddress);                                 // Print UDP address
+    printf("UDP PORT: %d\n", udpPort);                                        // Print UDP port
   }
 }
