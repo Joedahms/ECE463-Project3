@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <errno.h>
+#include <dirent.h>
 
 #include "../common/network_node.h"
 #include "../common/packet.h"
@@ -23,12 +24,17 @@ uint8_t debugFlag = 0;  // Can add conditional statements with this flag to prin
 int udpSocketDescriptor;
 char* userInput;
 
+// Connection packet delimiters that are constant for all connection packets
+// See packet.h & packet.c
+extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
+
 // Main
 int main(int argc, char* argv[]) {
   // Assign callback function for ctrl-c
   signal(SIGINT, shutdownClient);
 
-  userInput = malloc(USER_INPUT_BUFFER_LENGTH);
+  // Allocate memory for user input
+  userInput = calloc(1, USER_INPUT_BUFFER_LENGTH);
   
   // Socket address data structure of the server
   struct sockaddr_in serverAddress;
@@ -46,10 +52,21 @@ int main(int argc, char* argv[]) {
   memset(&udpAddress, 0, sizeof(udpAddress));                                       // 0 out
   udpSocketDescriptor = setupUdpSocket(udpAddress, 0);                              // Setup udp socket without binding
 
-  // Put together a connection packet
-  char* connectionPacket = malloc(CONNECTION_PACKET_SIZE);                          // Allocate connection packet string
   struct ConnectionPacketFields connectionPacketFields;                             // Struct to store the fields to send
-  strcpy(connectionPacketFields.username, getenv("USER"));                          // Set the username of using the USER environment variable
+  
+  // Get available resources on client and add to connection packet
+  char* availableResources = calloc(1, RESOURCE_ARRAY_SIZE);                        // Allocate space for the string of available resources
+  if (getAvailableResources(availableResources, "Public") == -1) {
+    exit(1);
+  }
+  strcpy(connectionPacketFields.availableResources, availableResources);            // Add the resource string to the connection packet
+  free(availableResources);                                                         // Free available resources string
+
+  // Get username
+  strcpy(connectionPacketFields.username, getenv("USER"));                          // Set the username by using the USER environment variable
+
+  // Build and send the connection packet
+  char* connectionPacket = calloc(1, CONNECTION_PACKET_SIZE);                       // Allocate connection packet string
   buildConnectionPacket(connectionPacket, connectionPacketFields, debugFlag);       // Build the entire connection packet
   sendUdpMessage(udpSocketDescriptor, serverAddress, connectionPacket, debugFlag);  // Send connection packet to the server
   free(connectionPacket);                                                           // Free connection packet
@@ -122,10 +139,43 @@ void receiveMessageFromServer() {
     memset(buffer, 0, sizeof(buffer));  // Clear the buffer before receiving a new message
     int bytesReceived = recvfrom(udpSocketDescriptor, buffer, USER_INPUT_BUFFER_LENGTH, 0, NULL, NULL);
     if (bytesReceived > 0) {
-        buffer[bytesReceived] = '\0';  // Null-terminate the received string
+        buffer[bytesReceived] = '\0';   // Null-terminate the received string
         printf("Message from server: %s\n", buffer);
     } else {
         perror("Error receiving message from server");
     }
+}
+
+// Get available resources on client and add to connection packet
+/*
+  * Name: getAvailableResources
+  * Purpose: Get the available resources on the client and add them to the available
+  * resources string.
+  * Input: 
+  * - String to put the available resources in
+  * - Name of the directory where the available resources are located
+  * Output:
+  * - -1: Error
+  * - 0: Success
+*/
+int getAvailableResources(char* availableResources, const char* directoryName) {
+  DIR* directoryStream = opendir(directoryName);                      // Open resource directory
+  if (directoryStream == NULL) {                                      // Error opening the directory
+    return -1;
+    perror("Error opening resource directory");
+  }
+  struct dirent* directoryEntry;                                      // dirent structure for the entries in the resource directory
+  while((directoryEntry = readdir(directoryStream)) != NULL) {        // Loop through the entire resource directory
+    const char* entryName = directoryEntry->d_name;                   // Get the name of the entry
+    if (strcmp(entryName, ".") == 0) {                                // Ignore current directory
+      continue;
+    }
+    if (strcmp(entryName, "..") == 0) {                               // Ignore parent directory
+      continue;
+    }
+    strcat(availableResources, directoryEntry->d_name);               // Add the entry name to the available resources
+    strcat(availableResources, connectionPacketDelimiters.resource);  // Add the resource delimiter to show end of resource
+  } 
+  return 0;
 }
 

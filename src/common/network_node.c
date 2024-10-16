@@ -23,7 +23,7 @@
 */
 void checkCommandLineArguments(int argc, char** argv, uint8_t* debugFlag) {
   char* programName = argv[0];
-	switch (argc) { // Check how many command line arguments are passed
+	switch (argc) {                       // Check how many command line arguments are passed
 		case 1:
 			printf("Running %s in normal mode\n", programName);
 			break;
@@ -174,8 +174,10 @@ int writeFile(char* fileName, char* fileContents, size_t fileSize) {
 /*
  * Name: setupUdpSocket
  * Purpose: Setup the UDP socket. Set it to non blocking. Bind it. 
- * Input: Address structure to bind to.
- * Output: None
+ * Input: 
+ * - Address structure to bind the socket to 
+ * - Flag indicating whether or not to bind the socket
+ * Output: The setup UDP socket
 */
 int setupUdpSocket(struct sockaddr_in serverAddress, uint8_t bindFlag) {
   int udpSocketDescriptor;
@@ -211,20 +213,15 @@ int setupUdpSocket(struct sockaddr_in serverAddress, uint8_t bindFlag) {
 
 /*
   * Name: checkUdpSocket
-  * Purpose: Check if there is an incoming message on a UDP port. If there is then
-  * return an integer depending on the type of message
+  * Purpose: Check if there is an incoming message on a UDP port.
   * Input:
   * - Address of the UDP port that is receiving messages.
   * - If message is received, socket address data structure to store the senders address in
   * - Buffer to read message into
   * - Debug flag
-  * Output: 
-  * - 0: No incoming packets
-  * - 1: Information about the UDP/TCP info relationship on the clien
-  * - 2: Plain text message
-  * - 3: Put command
-  * - 4: Get command
-  * - 5: Invalid command
+  * Output: None
+  * 0: No incoming messages
+  * 1: There is an incoming message
 */
 int checkUdpSocket(int listeningUDPSocketDescriptor, struct sockaddr_in* incomingAddress, char* message, uint8_t debugFlag) {
   // Check for incoming messages
@@ -235,12 +232,12 @@ int checkUdpSocket(int listeningUDPSocketDescriptor, struct sockaddr_in* incomin
   if (nonBlockingReturn == 1) {                 // No incoming messages
     return 0;                                   // Return 0
   }
-  
+  // Use message here
+
   // Print out UDP message
   printReceivedMessage(*incomingAddress, bytesReceived, message, debugFlag); 
   return 1;
   
-  // message
 }
 
 /*
