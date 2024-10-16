@@ -24,6 +24,9 @@ char* message;                    // Message received on UDP socket
 // Array of connected client data structures
 struct connectedClient connectedClients[MAX_CONNECTED_CLIENTS];
 
+extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
+extern struct StatusPacketDelimiters statusPacketDelimiters;
+
 // Main fucntion
 int main(int argc, char* argv[]) {
   // Assign callback function for Ctrl-c
@@ -63,23 +66,40 @@ int main(int argc, char* argv[]) {
       break;
 
       case 1:                                         // Something
-      // Read connection packet
-      struct ConnectionPacketFields connectionPacketFields; // Struct to store the sent data in
-      uint8_t validPacket = readConnectionPacket(message, &connectionPacketFields);
-      if (validPacket == -1) {                        // Check if the packet is valid
-        printf("Invalid connection packet received\n");
-        continue;
-      }
+      
+      char* tempMessage = calloc(1, 2000);
+      strcpy(tempMessage, message);
+      const char* middle = connectionPacketDelimiters.middle;
+      char* packetBeginning = calloc(1, 20);
 
-      // Find an empty connection client and fill it out with the info from the connection packet
-      int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);                                                // Find an empty connected client
-      strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);                      // username
-      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;    // UDP address
-      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                  // UDP port
-      strcpy(connectedClients[emptyConnectedClientIndex].availableResources, connectionPacketFields.availableResources);  // Available resources
-      memset(&connectionPacketFields, 0, sizeof(connectionPacketFields));                                                 // Clear out struct used to store sent data
-      printAllConnectedClients();
-      break;
+      while (strncmp(tempMessage, middle, 1) != 0) {                     // While not at the end of username
+        strncat(packetBeginning, tempMessage, 1); 
+        tempMessage++;
+      }
+      printf("packet beginning: %s\n", packetBeginning);
+
+      if (strcmp(packetBeginning, connectionPacketDelimiters.beginning) == 0) {
+        // Read connection packet
+        struct ConnectionPacketFields connectionPacketFields; // Struct to store the sent data in
+        uint8_t validPacket = readConnectionPacket(message, &connectionPacketFields);
+        if (validPacket == -1) {                        // Check if the packet is valid
+          printf("Invalid connection packet received\n");
+          continue;
+        }
+
+        // Find an empty connection client and fill it out with the info from the connection packet
+        int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);                                                // Find an empty connected client
+        strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);                      // username
+        connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;    // UDP address
+        connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                  // UDP port
+        strcpy(connectedClients[emptyConnectedClientIndex].availableResources, connectionPacketFields.availableResources);  // Available resources
+        memset(&connectionPacketFields, 0, sizeof(connectionPacketFields));                                                 // Clear out struct used to store sent data
+        printAllConnectedClients();
+        break;
+      }
+      else if (strcmp(packetBeginning, statusPacketDelimiters.beginning) == 0) {
+        
+      }
 
       default:  // Invalid message received
     }

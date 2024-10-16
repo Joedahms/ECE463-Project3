@@ -17,6 +17,7 @@
 #define USER_INPUT_BUFFER_LENGTH 40                                     // Max size of message a user can input
 #define USERNAME_SIZE 20                                                // Max size of a username
 #define RESOURCE_ARRAY_SIZE 2000                                        // Max size of a string containing the available resources on a client
+#define STATUS_SIZE 10
 
 #include <sys/types.h>
 #include <sys/socket.h>

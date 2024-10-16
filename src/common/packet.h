@@ -2,6 +2,7 @@
 #define PACKET_H
 
 #define CONNECTION_PACKET_SIZE 200
+#define STATUS_PACKET_SIZE 200
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -23,7 +24,20 @@ struct ConnectionPacketFields {
   char availableResources[RESOURCE_ARRAY_SIZE]; // Filenames of files that the client is willing to share
 };
 
+struct StatusPacketDelimiters {
+  char beginning[20]; 
+  char middle[20];
+  char end[20];
+};
+
+struct StatusPacketFields {
+  char status[STATUS_SIZE];
+};
+
 void buildConnectionPacket(char*, struct ConnectionPacketFields, uint8_t);  // Build a connection packet with the delimiters and the fields
 int readConnectionPacket(char*, struct ConnectionPacketFields*);            // Get the fields out of a connection packet
+
+void buildStatusPacket(char*, struct StatusPacketFields, uint8_t);
+int readStatusPacket(char*, struct StatusPacketFields*);
 
 #endif

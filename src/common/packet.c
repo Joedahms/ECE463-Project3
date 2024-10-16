@@ -16,6 +16,12 @@ struct ConnectionPacketDelimiters connectionPacketDelimiters = {
   "endconnect"    // end
 };
 
+struct StatusPacketDelimiters statusPacketDelimiters = {
+  "startstatus",
+  "$",
+  "endstatus"
+};
+
 /*
   * Name: buildConnectionPacket
   * Purpose: Using a passed in struct containing the fields of a connection packet, build a connection
@@ -98,3 +104,52 @@ int readConnectionPacket(char* packetToBeRead, struct ConnectionPacketFields* re
 
   return 0;
 }
+
+void buildStatusPacket(char* builtPacket, struct StatusPacketFields statusPacketFields, uint8_t debugFlag) {
+  // Add beginning and middle delimiter
+  strncat(builtPacket, statusPacketDelimiters.beginning, strlen(statusPacketDelimiters.beginning));
+  strcat(builtPacket, statusPacketDelimiters.middle);
+  if (debugFlag) {
+    printf("Status packet after adding beginning and a middle: %s\n", builtPacket);
+  }
+
+  // Add status and a middle delimiter
+  strcat(builtPacket, statusPacketFields.status);
+  strcat(builtPacket, statusPacketDelimiters.middle);
+  if (debugFlag) {
+    printf("Status packet after adding status and a middle: %s\n", builtPacket);
+  }
+
+  // Add end delimiter and if the debug flag is set, print out the whole packet
+  strcat(builtPacket, statusPacketDelimiters.end);
+  if (debugFlag) {
+    printf("Entire status packet: %s\n", builtPacket);
+  }
+}
+
+int readStatusPacket(char* packetToBeRead, struct StatusPacketFields* statusPacketFields) {
+  // Delimiters
+  const char* beginning = statusPacketDelimiters.beginning;
+  const char* middle = statusPacketDelimiters.middle;
+  const char* end = statusPacketDelimiters.end;
+
+  // Beginning
+  if (strncmp(packetToBeRead, beginning, strlen(beginning)) != 0) {     // Check if the beginning of the packet is correct
+    return -1;
+  }
+  packetToBeRead += strlen(beginning);                                  // Advance past the beginning
+  if (strncmp(packetToBeRead, "$", 1) != 0) {                           // Make sure there is a middle delimiter after the beginning
+    return -1;
+  }
+  packetToBeRead++;                                                     // Past middle delimiter
+
+  // Username
+  while (strncmp(packetToBeRead, middle, 1) != 0) {                     // While not at the end of status
+    strncat(statusPacketFields->status, packetToBeRead, 1); 
+    packetToBeRead++;
+  }
+  packetToBeRead++; // Past middle delimiter
+
+  return 0;
+}
+
