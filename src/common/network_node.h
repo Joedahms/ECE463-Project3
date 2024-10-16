@@ -15,6 +15,7 @@
 #define INITIAL_MESSAGE_SIZE 100                                        // Max size of the initial calibration message
 #define MAX_CONNECTED_CLIENTS 100                                       // Maximum number of clients that can be connected to the server
 #define USER_INPUT_BUFFER_LENGTH 40                                     // Max size of message a user can input
+#define USERNAME_SIZE 20
 
 #include <sys/types.h>
 #include <sys/socket.h>

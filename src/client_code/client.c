@@ -44,8 +44,11 @@ int main(int argc, char* argv[]) {
   struct sockaddr_in udpAddress;                                                    // Will leave empty because do not need to bind
   memset(&udpAddress, 0, sizeof(udpAddress));                                       // 0 out
   udpSocketDescriptor = setupUdpSocket(udpAddress, 0);                              // Setup udp socket without binding
-  char* connectionPacket = malloc(CONNECTION_PACKET_SIZE);                          // Allocate connection packet
-  buildConnectionPacket(connectionPacket, udpAddress);                              // Build connection packet with appropriate fields
+  char* connectionPacket = malloc(CONNECTION_PACKET_SIZE);                          // Allocate connection packet string
+
+  struct ConnectionPacketFields connectionPacketFields;
+  strcpy(connectionPacketFields.username, getenv("USER"));
+  buildConnectionPacket(connectionPacket, connectionPacketFields, debugFlag);                   // Build connection packet with appropriate fields
   sendUdpMessage(udpSocketDescriptor, serverAddress, connectionPacket, debugFlag);  // Send connection packet to the server
   free(connectionPacket);                                                           // Free connection packet
 

@@ -7,12 +7,21 @@
 #include <sys/types.h>
 #include <netdb.h>
 
-struct ConnectionPacket {
-  char beginning[20];
-  char delimiter[20];
-  char end[20];
+#include "network_node.h"
+
+// Delimiters in a connection packet. The same in every connection packet
+struct ConnectionPacketDelimiters {
+  char beginning[20]; // Beginning of the packet
+  char middle[20];    // Seperate the fields of the packet
+  char end[20];       // End of the packet
 };
 
-void buildConnectionPacket(char*, struct sockaddr_in);
+// Fields in a connection packet that will have variable information 
+struct ConnectionPacketFields {
+  char username[USERNAME_SIZE];
+};
+
+void buildConnectionPacket(char*, struct ConnectionPacketFields, uint8_t);
+int readConnectionPacket(char*, struct ConnectionPacketFields*);
 
 #endif

@@ -63,7 +63,15 @@ int main(int argc, char* argv[]) {
       break;
 
       case 1:                                         // Something
+      struct ConnectionPacketFields connectionPacketFields;
+      uint8_t validPacket = readConnectionPacket(message, &connectionPacketFields);
+      if (validPacket == -1) {
+        printf("Invalid connection packet received\n");
+        continue;
+      }
+
       int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);
+      strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);
       connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;
       connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;
       printAllConnectedClients();
@@ -132,7 +140,10 @@ void printAllConnectedClients() {
     if (udpAddress == 0 && udpPort == 0) {
       continue;
     }
+    char username[USERNAME_SIZE];
+    strcpy(username, connectedClients[i].username);
     printf("CONNECTED CLIENT %d\n", i);
+    printf("USERNAME: %s\n", username);
     printf("UDP ADDRESS: %ld\n", udpAddress);
     printf("UDP PORT: %d\n", udpPort);
   }

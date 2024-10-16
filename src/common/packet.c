@@ -7,15 +7,43 @@
 
 #include "packet.h"
 
-struct ConnectionPacket connectionPacket = {
-  "startconnect",
-  "$",
-  "endconnect"
+// Delimiters in a connection packet. The same in every connection packet
+struct ConnectionPacketDelimiters connectionPacketDelimiters = {
+  "startconnect", // beginning 
+  "$",            // middle
+  "endconnect"    // end
 };
 
-void buildConnectionPacket(char* builtPacket, struct sockaddr_in packetSource) {
-  strncat(builtPacket, connectionPacket.beginning, strlen(connectionPacket.beginning)); // Add beginning field to packet
-  char username[20] = "username";                                                       // Hard coded username for now
-  strncat(builtPacket, connectionPacket.end, strlen(connectionPacket.end));             // Add end field to packet
+/*
+  * Name: buildConnectionPacket
+  * Purpose: Construct a connection packet
+  * Input: 
+  * - String where the packet is
+  * - Address structure of the source of the packet
+  * - Debug flag
+  * Output: None
+*/
+void buildConnectionPacket(char* builtPacket, struct ConnectionPacketFields connectionPacketFields, uint8_t debugFlag) {
+  strncat(builtPacket, connectionPacketDelimiters.beginning, strlen(connectionPacketDelimiters.beginning)); // Add beginning delimiter to packet
+  strncat(builtPacket, connectionPacketFields.username, strlen(connectionPacketFields.username));                                                         // Add username field to packet
+  strncat(builtPacket, connectionPacketDelimiters.end, strlen(connectionPacketDelimiters.end));             // Add end delimiter to packet
+  if (debugFlag) {                                                                                          // If debug flag
+    printf("Connection packet: %s\n", builtPacket);                                                         // Print out the whole packet
+  }
+}
 
+int readConnectionPacket(char* packetToBeRead, struct ConnectionPacketFields* readPacketFields) {
+  // Delimiters
+  char* beginning = connectionPacketDelimiters.beginning;
+  char* middle = connectionPacketDelimiters.middle;
+  char* end = connectionPacketDelimiters.end;
+
+  // Check if beginning of the packet is correct
+  if (strncmp(packetToBeRead, beginning, strlen(beginning)) != 0) {
+    return -1;
+  }
+  packetToBeRead += strlen(beginning);                                  // Advance past the beginning
+  int usernameLength = strlen(packetToBeRead) - strlen(end);            // packet is now just username and end
+  strncpy(readPacketFields->username, packetToBeRead, usernameLength);  // Read the username into the returned type
+  return 0;
 }

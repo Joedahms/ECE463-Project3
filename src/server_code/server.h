@@ -3,6 +3,7 @@
 
 // Data about a client connected to the server
 struct connectedClient {
+  char username[USERNAME_SIZE];
   struct sockaddr_in socketUdpAddress;                    // Address structure of connected client's UDP socket
 };
 
