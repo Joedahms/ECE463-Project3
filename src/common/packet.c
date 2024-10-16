@@ -25,15 +25,24 @@ struct ConnectionPacketDelimiters connectionPacketDelimiters = {
   * Output: None
 */
 void buildConnectionPacket(char* builtPacket, struct ConnectionPacketFields connectionPacketFields, uint8_t debugFlag) {
-  strcat(builtPacket, connectionPacketDelimiters.beginning); // Add beginning delimiter to packet
+  strncat(builtPacket, connectionPacketDelimiters.beginning, strlen(connectionPacketDelimiters.beginning)); // Add beginning delimiter to packet
   strcat(builtPacket, connectionPacketDelimiters.middle);
+  if (debugFlag) {
+    printf("Connection packet after adding beginning and a middle: %s\n", builtPacket);
+  }
   strcat(builtPacket, connectionPacketFields.username);                                                         // Add username field to packet
   strcat(builtPacket, connectionPacketDelimiters.middle);
+  if (debugFlag) {
+    printf("Connection packet after adding username and a middle: %s\n", builtPacket);
+  }
   strcat(builtPacket, connectionPacketFields.availableResources);
   strcat(builtPacket, connectionPacketDelimiters.middle);
+  if (debugFlag) {
+    printf("Connection packet after adding availableResources and a middle: %s\n", builtPacket);
+  }
   strcat(builtPacket, connectionPacketDelimiters.end);             // Add end delimiter to packet
   if (debugFlag) {                                                                                          // If debug flag
-    printf("Connection packet: %s\n", builtPacket);                                                         // Print out the whole packet
+    printf("Entire connection packet: %s\n", builtPacket);                                                         // Print out the whole packet
   }
 }
 

@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
 
   listeningUDPSocketDescriptor = setupUdpSocket(serverAddress, 1);  // Setup the UDP socket
   
-  message = malloc(INITIAL_MESSAGE_SIZE);             // Space for incoming messages
+  message = calloc(1, INITIAL_MESSAGE_SIZE);             // Space for incoming messages
   
   // Whether or not data is available at the socket. If it is, what kind.
   int udpStatus;
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
       connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;  // UDP address
       connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                // UDP port
       strcpy(connectedClients[emptyConnectedClientIndex].availableResources, connectionPacketFields.availableResources);                    
-      printf("test: %s\n", connectedClients[emptyConnectedClientIndex].availableResources);
+      memset(&connectionPacketFields, 0, sizeof(connectionPacketFields));
       printAllConnectedClients();
       break;
 
@@ -138,20 +138,25 @@ void printAllConnectedClients() {
   int i;
   unsigned long udpAddress;
   unsigned short udpPort;
+  char* username = calloc(1, USERNAME_SIZE);                                             // Username
+  char* availableResources = calloc(1, RESOURCE_ARRAY_SIZE);
   for (i = 0; i < MAX_CONNECTED_CLIENTS; i++) {
     udpAddress = ntohl(connectedClients[i].socketUdpAddress.sin_addr.s_addr); // UDP address
     udpPort = ntohs(connectedClients[i].socketUdpAddress.sin_port);           // UDP port
     if (udpAddress == 0 && udpPort == 0) {                                    // Check if the client is empty
+      i++;
       continue;
     }
-    char username[USERNAME_SIZE];                                             // Username
-    char availableResources[RESOURCE_ARRAY_SIZE];
     strcpy(username, connectedClients[i].username);
     strcpy(availableResources, connectedClients[i].availableResources);
     printf("CONNECTED CLIENT %d\n", i);
     printf("USERNAME: %s\n", username);                                       // Print username
+    memset(username, 0, USERNAME_SIZE);
     printf("UDP ADDRESS: %ld\n", udpAddress);                                 // Print UDP address
     printf("UDP PORT: %d\n", udpPort);                                        // Print UDP port
     printf("AVAILABLE RESOURCES: %s\n", availableResources);                                        // Print UDP port
+    memset(availableResources, 0, RESOURCE_ARRAY_SIZE);
   }
+  free(username);
+  free(availableResources);
 }

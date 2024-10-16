@@ -24,6 +24,8 @@ uint8_t debugFlag = 0;  // Can add conditional statements with this flag to prin
 int udpSocketDescriptor;
 char* userInput;
 
+// Connection packet delimiters that are constant for all connection packets
+// See packet.h & packet.c
 extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
 
 // Main
@@ -31,7 +33,8 @@ int main(int argc, char* argv[]) {
   // Assign callback function for ctrl-c
   signal(SIGINT, shutdownClient);
 
-  userInput = malloc(USER_INPUT_BUFFER_LENGTH);
+  // Allocate memory for user input
+  userInput = calloc(1, USER_INPUT_BUFFER_LENGTH);
   
   // Socket address data structure of the server
   struct sockaddr_in serverAddress;
@@ -50,28 +53,31 @@ int main(int argc, char* argv[]) {
   udpSocketDescriptor = setupUdpSocket(udpAddress, 0);                              // Setup udp socket without binding
 
   struct ConnectionPacketFields connectionPacketFields;                             // Struct to store the fields to send
-  //
-  // Get available resources on client
-  char* availableResources = malloc(RESOURCE_ARRAY_SIZE);
-  const char* resourceDirectoryName = "Public";
-  DIR* resourceDirectoryStream = opendir(resourceDirectoryName);
-  struct dirent* resourceDirectoryEntry;
-  while((resourceDirectoryEntry = readdir(resourceDirectoryStream)) != NULL) {
-    const char* entryName = resourceDirectoryEntry->d_name;
-    if (strcmp(entryName, ".") == 0) {
+  
+  // Get available resources on client and add to connection packet
+  char* availableResources = calloc(1, RESOURCE_ARRAY_SIZE);                           // Allocate space for the string of available resources
+  const char* resourceDirectoryName = "Public";                                     // Name of the directory where the resources are located
+  DIR* resourceDirectoryStream = opendir(resourceDirectoryName);                    // Open said directory
+  if (resourceDirectoryStream == NULL) {
+    perror("Error opening resource directory");
+  }
+  struct dirent* resourceDirectoryEntry;                                            // dirent structure for the entries in the resource directory
+  while((resourceDirectoryEntry = readdir(resourceDirectoryStream)) != NULL) {      // Loop through the entire resource directory
+    const char* entryName = resourceDirectoryEntry->d_name;                         // Get the name of the entry
+    if (strcmp(entryName, ".") == 0) {                                              // Ignore current directory
       continue;
     }
-    if (strcmp(entryName, "..") == 0) {
+    if (strcmp(entryName, "..") == 0) {                                             // Ignore parent directory
       continue;
     }
-    strcat(availableResources, resourceDirectoryEntry->d_name);
-    strcat(availableResources, connectionPacketDelimiters.resource);
+    strcat(availableResources, resourceDirectoryEntry->d_name);                     // Add the entry name to the available resources
+    strcat(availableResources, connectionPacketDelimiters.resource);                // Add the resource delimiter to show end of resource
   } 
-  printf("%s\n", availableResources);
-  strcpy(connectionPacketFields.availableResources, availableResources);
-
-  // Add username
-  char* connectionPacket = malloc(CONNECTION_PACKET_SIZE);                          // Allocate connection packet string
+  strcpy(connectionPacketFields.availableResources, availableResources);            // Add the resource string to the connection packet
+  free(availableResources);                                                         // Free available resources string
+  
+  // Get username and add to connection packet
+  char* connectionPacket = calloc(1, CONNECTION_PACKET_SIZE);                          // Allocate connection packet string
   strcpy(connectionPacketFields.username, getenv("USER"));                          // Set the username of using the USER environment variable
   buildConnectionPacket(connectionPacket, connectionPacketFields, debugFlag);       // Build the entire connection packet
   sendUdpMessage(udpSocketDescriptor, serverAddress, connectionPacket, debugFlag);  // Send connection packet to the server
