@@ -59,31 +59,14 @@ int main(int argc, char* argv[]) {
   if (getAvailableResources(availableResources, "Public") == -1) {
     exit(1);
   }
-  /*
-  DIR* resourceDirectoryStream = opendir(resourceDirectoryName);                    // Open said directory
-  if (resourceDirectoryStream == NULL) {
-    perror("Error opening resource directory");
-  }
-  struct dirent* resourceDirectoryEntry;                                            // dirent structure for the entries in the resource directory
-  while((resourceDirectoryEntry = readdir(resourceDirectoryStream)) != NULL) {      // Loop through the entire resource directory
-    const char* entryName = resourceDirectoryEntry->d_name;                         // Get the name of the entry
-    if (strcmp(entryName, ".") == 0) {                                              // Ignore current directory
-      continue;
-    }
-    if (strcmp(entryName, "..") == 0) {                                             // Ignore parent directory
-      continue;
-    }
-    strcat(availableResources, resourceDirectoryEntry->d_name);                     // Add the entry name to the available resources
-    strcat(availableResources, connectionPacketDelimiters.resource);                // Add the resource delimiter to show end of resource
-  } 
-  */
-
   strcpy(connectionPacketFields.availableResources, availableResources);            // Add the resource string to the connection packet
   free(availableResources);                                                         // Free available resources string
 
-  // Get username and add to connection packet
-  char* connectionPacket = calloc(1, CONNECTION_PACKET_SIZE);                          // Allocate connection packet string
-  strcpy(connectionPacketFields.username, getenv("USER"));                          // Set the username of using the USER environment variable
+  // Get username
+  strcpy(connectionPacketFields.username, getenv("USER"));                          // Set the username by using the USER environment variable
+
+  // Build and send the connection packet
+  char* connectionPacket = calloc(1, CONNECTION_PACKET_SIZE);                       // Allocate connection packet string
   buildConnectionPacket(connectionPacket, connectionPacketFields, debugFlag);       // Build the entire connection packet
   sendUdpMessage(udpSocketDescriptor, serverAddress, connectionPacket, debugFlag);  // Send connection packet to the server
   free(connectionPacket);                                                           // Free connection packet
@@ -156,7 +139,7 @@ void receiveMessageFromServer() {
     memset(buffer, 0, sizeof(buffer));  // Clear the buffer before receiving a new message
     int bytesReceived = recvfrom(udpSocketDescriptor, buffer, USER_INPUT_BUFFER_LENGTH, 0, NULL, NULL);
     if (bytesReceived > 0) {
-        buffer[bytesReceived] = '\0';  // Null-terminate the received string
+        buffer[bytesReceived] = '\0';   // Null-terminate the received string
         printf("Message from server: %s\n", buffer);
     } else {
         perror("Error receiving message from server");
@@ -164,6 +147,17 @@ void receiveMessageFromServer() {
 }
 
 // Get available resources on client and add to connection packet
+/*
+  * Name: getAvailableResources
+  * Purpose: Get the available resources on the client and add them to the available
+  * resources string.
+  * Input: 
+  * - String to put the available resources in
+  * - Name of the directory where the available resources are located
+  * Output:
+  * - -1: Error
+  * - 0: Success
+*/
 int getAvailableResources(char* availableResources, const char* directoryName) {
   DIR* directoryStream = opendir(directoryName);                      // Open resource directory
   if (directoryStream == NULL) {                                      // Error opening the directory

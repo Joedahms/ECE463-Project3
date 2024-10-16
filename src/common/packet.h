@@ -19,8 +19,8 @@ struct ConnectionPacketDelimiters {
 
 // Fields in a connection packet that will be set by the sender and read by the receiver
 struct ConnectionPacketFields {
-  char username[USERNAME_SIZE];
-  char availableResources[RESOURCE_ARRAY_SIZE];
+  char username[USERNAME_SIZE];                 // Username of the client
+  char availableResources[RESOURCE_ARRAY_SIZE]; // Filenames of files that the client is willing to share
 };
 
 void buildConnectionPacket(char*, struct ConnectionPacketFields, uint8_t);  // Build a connection packet with the delimiters and the fields

@@ -15,11 +15,11 @@
 #include "server.h"
 
 // Global flags
-uint8_t debugFlag = 0;  // Can add conditional statements with this flag to print out extra info
+uint8_t debugFlag = 0;            // Can add conditional statements with this flag to print out extra info
 
 // Global variables (for signal handler)
 int listeningUDPSocketDescriptor;
-char* message;
+char* message;                    // Message received on UDP socket
 
 // Array of connected client data structures
 struct connectedClient connectedClients[MAX_CONNECTED_CLIENTS];
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
 
   listeningUDPSocketDescriptor = setupUdpSocket(serverAddress, 1);  // Setup the UDP socket
   
-  message = calloc(1, INITIAL_MESSAGE_SIZE);             // Space for incoming messages
+  message = calloc(1, INITIAL_MESSAGE_SIZE);          // Space for incoming messages
   
   // Whether or not data is available at the socket. If it is, what kind.
   int udpStatus;
@@ -64,20 +64,20 @@ int main(int argc, char* argv[]) {
 
       case 1:                                         // Something
       // Read connection packet
-      struct ConnectionPacketFields connectionPacketFields;
+      struct ConnectionPacketFields connectionPacketFields; // Struct to store the sent data in
       uint8_t validPacket = readConnectionPacket(message, &connectionPacketFields);
-      if (validPacket == -1) {
+      if (validPacket == -1) {                        // Check if the packet is valid
         printf("Invalid connection packet received\n");
         continue;
       }
 
       // Find an empty connection client and fill it out with the info from the connection packet
-      int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);                                              // Find an empty connected client
-      strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);                    // username
-      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;  // UDP address
-      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                // UDP port
-      strcpy(connectedClients[emptyConnectedClientIndex].availableResources, connectionPacketFields.availableResources);                    
-      memset(&connectionPacketFields, 0, sizeof(connectionPacketFields));
+      int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);                                                // Find an empty connected client
+      strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);                      // username
+      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;    // UDP address
+      connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                  // UDP port
+      strcpy(connectedClients[emptyConnectedClientIndex].availableResources, connectionPacketFields.availableResources);  // Available resources
+      memset(&connectionPacketFields, 0, sizeof(connectionPacketFields));                                                 // Clear out struct used to store sent data
       printAllConnectedClients();
       break;
 
@@ -106,7 +106,9 @@ void shutdownServer(int signal) {
   * Purpose: Loop through the connectedClients array until an empty spot is found. Looks for unset
   * UDP port.
   * Input: debugFlag
-  * Output: Index of first empty spot
+  * Output:
+  * - -1: All spots in the connected client array are full
+  * - Anything else: Index of the empty spot in the array
 */
 int findEmptyConnectedClient(uint8_t debugFlag) {
   int connectedClientsIndex;
@@ -136,10 +138,11 @@ int findEmptyConnectedClient(uint8_t debugFlag) {
 void printAllConnectedClients() {
   printf("\n*** PRINTING ALL CONNECTED CLIENTS ***\n");
   int i;
-  unsigned long udpAddress;
+  unsigned long udpAddress;                                                   // Not in human readable format
   unsigned short udpPort;
-  char* username = calloc(1, USERNAME_SIZE);                                             // Username
+  char* username = calloc(1, USERNAME_SIZE);                                  // Username
   char* availableResources = calloc(1, RESOURCE_ARRAY_SIZE);
+
   for (i = 0; i < MAX_CONNECTED_CLIENTS; i++) {
     udpAddress = ntohl(connectedClients[i].socketUdpAddress.sin_addr.s_addr); // UDP address
     udpPort = ntohs(connectedClients[i].socketUdpAddress.sin_port);           // UDP port
@@ -151,11 +154,11 @@ void printAllConnectedClients() {
     strcpy(availableResources, connectedClients[i].availableResources);
     printf("CONNECTED CLIENT %d\n", i);
     printf("USERNAME: %s\n", username);                                       // Print username
-    memset(username, 0, USERNAME_SIZE);
+    memset(username, 0, USERNAME_SIZE);                                       // 0 out for next iteration
     printf("UDP ADDRESS: %ld\n", udpAddress);                                 // Print UDP address
     printf("UDP PORT: %d\n", udpPort);                                        // Print UDP port
-    printf("AVAILABLE RESOURCES: %s\n", availableResources);                                        // Print UDP port
-    memset(availableResources, 0, RESOURCE_ARRAY_SIZE);
+    printf("AVAILABLE RESOURCES: %s\n", availableResources);                  // Print available resources
+    memset(availableResources, 0, RESOURCE_ARRAY_SIZE);                       // 0 out for next iteration
   }
   free(username);
   free(availableResources);
