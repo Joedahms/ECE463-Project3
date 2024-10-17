@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
 
   fd_set read_fds;
 
-  buffer = malloc(1000);
+  buffer = calloc(1, 1000);
 
   // Constantly check user input
   while(1) {
@@ -110,6 +110,7 @@ int main(int argc, char* argv[]) {
     }
     if (FD_ISSET(udpSocketDescriptor, &read_fds)) {
       int bytesReceived = recvfrom(udpSocketDescriptor, buffer, USER_INPUT_BUFFER_LENGTH, 0, NULL, NULL);
+      printf("buffer: %s\n", buffer);
       int packetType = getPacketType(buffer);
       printf("packet type: %d\n", packetType);
     }

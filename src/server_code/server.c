@@ -93,13 +93,27 @@ pthread_create(&pid, NULL, thread_function, NULL);
   return 0;
 } // main
 
-void* thread_function()
-{
-    while(1)
-    {
-         printf("hello\n");
-         usleep(STATUS_SEND_INTERVAL);
+void* thread_function() {
+  int i;
+
+  struct StatusPacketFields statusPacketFields;
+  strcpy(statusPacketFields.status, "testing");
+  char* statusPacket = calloc(1, STATUS_PACKET_SIZE);
+  buildStatusPacket(statusPacket, statusPacketFields, debugFlag);       // Build the entire connection packet
+//  free(statusPacket);                                                           // Free connection packet
+
+  while(1) {
+    int i;
+    for (i = 0; i < 100; i++) {
+      struct sockaddr_in clientUdpAddress = connectedClients[i].socketUdpAddress;
+      if (clientUdpAddress.sin_addr.s_addr == 0 && clientUdpAddress.sin_port == 0) {
+        continue;
+      }
+      sendUdpMessage(listeningUDPSocketDescriptor, clientUdpAddress, statusPacket, debugFlag);
+      printf("i: %d\n", i);
     }
+    usleep(STATUS_SEND_INTERVAL);
+  }
 }
 
 /*
