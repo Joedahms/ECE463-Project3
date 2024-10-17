@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include "../common/network_node.h"
 #include "../common/packet.h"
@@ -26,6 +27,8 @@ struct connectedClient connectedClients[MAX_CONNECTED_CLIENTS];
 
 extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
 extern struct StatusPacketDelimiters statusPacketDelimiters;
+
+void* thread_function();
 
 // Main fucntion
 int main(int argc, char* argv[]) {
@@ -58,7 +61,8 @@ int main(int argc, char* argv[]) {
   int udpStatus;
   int packetType;
 
-//  pthread
+  pthread_t pid;
+pthread_create(&pid, NULL, thread_function, NULL);
 
   // Continously listen for new UDP packets and new TCP connections
   while (1) {
@@ -89,16 +93,15 @@ int main(int argc, char* argv[]) {
   return 0;
 } // main
 
-/*
-void thread_funtion()
+void* thread_function()
 {
-    while(true)
+    while(1)
     {
          printf("hello\n");
-         usleep(100000);
+         usleep(STATUS_SEND_INTERVAL);
     }
 }
-*/
+
 /*
 * Name: shutdownServer
 * Purpose: Gracefully shutdown the server when the user enters

@@ -1,6 +1,8 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#define STATUS_SEND_INTERVAL 3000000
+
 // Data about a client connected to the server
 struct connectedClient {
   char username[USERNAME_SIZE];                 // Client username
