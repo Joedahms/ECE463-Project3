@@ -113,6 +113,13 @@ int main(int argc, char* argv[]) {
       printf("buffer: %s\n", buffer);
       int packetType = getPacketType(buffer);
       printf("packet type: %d\n", packetType);
+
+      struct StatusPacketFields statusPacketFields;
+      strcpy(statusPacketFields.status, "testing");
+      char* statusPacket = calloc(1, STATUS_PACKET_SIZE);
+      buildStatusPacket(statusPacket, statusPacketFields, debugFlag);       // Build the entire connection packet
+      sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);  // Send connection packet to the server
+      free(statusPacket);                                                           // Free connection packet
     }
   }
 	return 0;
