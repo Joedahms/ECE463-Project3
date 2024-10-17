@@ -19,7 +19,7 @@ uint8_t debugFlag = 0;            // Can add conditional statements with this fl
 
 // Global variables (for signal handler)
 int listeningUDPSocketDescriptor;
-char* message;                    // Message received on UDP socket
+char* packet;                    // packet received on UDP socket
 
 // Array of connected client data structures
 struct connectedClient connectedClients[MAX_CONNECTED_CLIENTS];
@@ -52,61 +52,53 @@ int main(int argc, char* argv[]) {
 
   listeningUDPSocketDescriptor = setupUdpSocket(serverAddress, 1);  // Setup the UDP socket
   
-  message = calloc(1, INITIAL_MESSAGE_SIZE);          // Space for incoming messages
+  packet = calloc(1, INITIAL_MESSAGE_SIZE);          // Space for incoming packets
   
   // Whether or not data is available at the socket. If it is, what kind.
   int udpStatus;
+  int packetType;
+
+//  pthread
 
   // Continously listen for new UDP packets and new TCP connections
   while (1) {
-    udpStatus = checkUdpSocket(listeningUDPSocketDescriptor, &clientUDPAddress, message, debugFlag);  // Check the UDP socket
-    switch (udpStatus) {
-      case 0:                                         // Nothing
+    udpStatus = checkUdpSocket(listeningUDPSocketDescriptor, &clientUDPAddress, packet, debugFlag);  // Check the UDP socket
 
+    if (udpStatus == 0) {
+      continue;
+    }
+    packetType = getPacketType(packet);
+    
+    switch(packetType) {
+      case 0: // Connection
+      if (debugFlag) {
+        printf("Connection packet received\n");
+      }
+      handleConnectionPacket(packet, clientUDPAddress);
       break;
 
-      case 1:                                         // Something
-      
-      char* tempMessage = calloc(1, 2000);
-      strcpy(tempMessage, message);
-      const char* middle = connectionPacketDelimiters.middle;
-      char* packetBeginning = calloc(1, 20);
-
-      while (strncmp(tempMessage, middle, 1) != 0) {                     // While not at the end of username
-        strncat(packetBeginning, tempMessage, 1); 
-        tempMessage++;
+      case 1: // Status
+      if (debugFlag) {
+        printf("Status packet received\n");
       }
-      printf("packet beginning: %s\n", packetBeginning);
-
-      if (strcmp(packetBeginning, connectionPacketDelimiters.beginning) == 0) {
-        // Read connection packet
-        struct ConnectionPacketFields connectionPacketFields; // Struct to store the sent data in
-        uint8_t validPacket = readConnectionPacket(message, &connectionPacketFields);
-        if (validPacket == -1) {                        // Check if the packet is valid
-          printf("Invalid connection packet received\n");
-          continue;
-        }
-
-        // Find an empty connection client and fill it out with the info from the connection packet
-        int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);                                                // Find an empty connected client
-        strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);                      // username
-        connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;    // UDP address
-        connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                  // UDP port
-        strcpy(connectedClients[emptyConnectedClientIndex].availableResources, connectionPacketFields.availableResources);  // Available resources
-        memset(&connectionPacketFields, 0, sizeof(connectionPacketFields));                                                 // Clear out struct used to store sent data
-        printAllConnectedClients();
-        break;
-      }
-      else if (strcmp(packetBeginning, statusPacketDelimiters.beginning) == 0) {
-        
-      }
-
-      default:  // Invalid message received
+      // handle status packet
+      break;
+      default:
     }
   } // while(1)
   return 0;
 } // main
 
+/*
+void thread_funtion()
+{
+    while(true)
+    {
+         printf("hello\n");
+         usleep(100000);
+    }
+}
+*/
 /*
 * Name: shutdownServer
 * Purpose: Gracefully shutdown the server when the user enters
@@ -115,7 +107,7 @@ int main(int argc, char* argv[]) {
 * Output: None
 */
 void shutdownServer(int signal) {
-  free(message);
+  free(packet);
   close(listeningUDPSocketDescriptor);
   printf("\n");
   exit(0);
@@ -183,3 +175,26 @@ void printAllConnectedClients() {
   free(username);
   free(availableResources);
 }
+
+
+
+int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress) {
+  // Read connection packet
+  struct ConnectionPacketFields connectionPacketFields; // Struct to store the sent data in
+  memset(&connectionPacketFields, 0, sizeof(connectionPacketFields));                                                 // Clear out struct used to store sent data
+  uint8_t validPacket = readConnectionPacket(packet, &connectionPacketFields);
+  if (validPacket == -1) {                        // Check if the packet is valid
+    printf("Invalid connection packet received\n");
+    return -1;
+  }
+
+  // Find an empty connection client and fill it out with the info from the connection packet
+  int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);                                                // Find an empty connected client
+  strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);                      // username
+  connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;    // UDP address
+  connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                  // UDP port
+  strcpy(connectedClients[emptyConnectedClientIndex].availableResources, connectionPacketFields.availableResources);  // Available resources
+  printAllConnectedClients();
+  return 0;
+}
+

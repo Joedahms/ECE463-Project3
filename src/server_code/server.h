@@ -13,5 +13,7 @@ void shutdownServer(int);                       // Gracefully shutdown the serve
 int findEmptyConnectedClient(uint8_t);          // Find an empty connected client in an array of them
 void printAllConnectedClients();                // Print out all connected clients. Debug purposes
 
+int handleConnectionPacket(char*, struct sockaddr_in);
+
 
 #endif

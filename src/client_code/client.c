@@ -23,6 +23,7 @@ uint8_t debugFlag = 0;  // Can add conditional statements with this flag to prin
 // Global variables (for signal handler)
 int udpSocketDescriptor;
 char* userInput;
+char* buffer;
 
 // Connection packet delimiters that are constant for all connection packets
 // See packet.h & packet.c
@@ -83,6 +84,8 @@ int main(int argc, char* argv[]) {
 
   fd_set read_fds;
 
+  buffer = malloc(1000);
+
   // Constantly check user input
   while(1) {
     // Use select to handle user input and server messages simultaneously
@@ -106,7 +109,9 @@ int main(int argc, char* argv[]) {
       }
     }
     if (FD_ISSET(udpSocketDescriptor, &read_fds)) {
-      receiveMessageFromServer();
+      int bytesReceived = recvfrom(udpSocketDescriptor, buffer, USER_INPUT_BUFFER_LENGTH, 0, NULL, NULL);
+      int packetType = getPacketType(buffer);
+      printf("packet type: %d\n", packetType);
     }
   }
 	return 0;
@@ -120,6 +125,7 @@ int main(int argc, char* argv[]) {
  */
 void shutdownClient(int signal) {
   free(userInput);            // Free user input
+  free(buffer);
   close(udpSocketDescriptor); // Close UDP socket
   printf("\n");
   exit(0);

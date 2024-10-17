@@ -12,7 +12,7 @@
 #define PORT 3941                                                       // Port server is listening on
 #define FILE_NAME_SIZE 50                                               // Maximum file name length in bytes
 #define MAX_FILE_SIZE 5000                                              // Maximum file length in bytes
-#define INITIAL_MESSAGE_SIZE 100                                        // Max size of the initial calibration message
+#define INITIAL_MESSAGE_SIZE 200                                        // Max size of the initial calibration message
 #define MAX_CONNECTED_CLIENTS 100                                       // Maximum number of clients that can be connected to the server
 #define USER_INPUT_BUFFER_LENGTH 40                                     // Max size of message a user can input
 #define USERNAME_SIZE 20                                                // Max size of a username

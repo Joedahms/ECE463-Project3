@@ -22,6 +22,34 @@ struct StatusPacketDelimiters statusPacketDelimiters = {
   "endstatus"
 };
 
+int getPacketType(const char* packet) {
+  char* temppacketStart = calloc(1, CONNECTION_PACKET_SIZE);    // Allocate size for a copy of the incoming packet
+  strcpy(temppacketStart, packet);                             // Copy the incoming packet
+  char* temppacket = temppacketStart;
+  char* middle = calloc(1, 20);
+  strcpy(middle, connectionPacketDelimiters.middle);   // Set the middle delimiter to the middle delimiter of a connecion packet
+                                                            // Probably need to make the middle delimiter common between all types of packets
+  char* packetBeginning = calloc(1, 20);                    // Space for string for analyzing beginning of incoming packet
+
+  while (strncmp(temppacket, middle, 1) != 0) {            // Traverse the beginning of the packet until a middle delimiter is hit
+    strncat(packetBeginning, temppacket, 1);               // Add a character from the incoming packet to the packet beginning string
+    temppacket++;                                          // Go to the next character
+  }
+
+  int returnVal = -1;
+  if (strcmp(packetBeginning, connectionPacketDelimiters.beginning) == 0) {
+    returnVal = 0;
+  }
+  else if (strcmp(packetBeginning, statusPacketDelimiters.beginning) == 0) {
+    returnVal = 1;
+  }
+
+  free(temppacketStart);
+  free(middle);
+  free(packetBeginning);
+  return returnVal;
+}
+
 /*
   * Name: buildConnectionPacket
   * Purpose: Using a passed in struct containing the fields of a connection packet, build a connection

@@ -237,7 +237,6 @@ int checkUdpSocket(int listeningUDPSocketDescriptor, struct sockaddr_in* incomin
   // Print out UDP message
   printReceivedMessage(*incomingAddress, bytesReceived, message, debugFlag); 
   return 1;
-  
 }
 
 /*
