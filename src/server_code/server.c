@@ -85,6 +85,34 @@ pthread_create(&pid, NULL, thread_function, NULL);
       if (debugFlag) {
         printf("Status packet received\n");
       }
+
+        // received a status packet. want find the connected client that sent it and set their status to 1
+        // loop through all the connected clients
+        // find the one that matches who sent it
+        // set their status to 1
+      struct StatusPacketFields statusPacketFields; // Struct to store the sent data in
+      memset(&statusPacketFields, 0, sizeof(statusPacketFields));                                                 // Clear out struct used to store sent data
+      uint8_t validPacket = readStatusPacket(packet, &statusPacketFields);
+      if (validPacket == -1) {                        // Check if the packet is valid
+//          printf("Invalid connection packet received\n");
+//         return -1;
+          break;
+      }
+
+      int i;
+      for (i = 0; i < 100; i++) {
+        if (connectedClients[i].socketUdpAddress.sin_addr.s_addr == 0 && connectedClients[i].socketUdpAddress.sin_port == 0) {
+          continue;
+        }
+
+
+        if (connectedClients[i].socketUdpAddress.sin_addr.s_addr == clientUDPAddress.sin_addr.s_addr && connectedClients[i].socketUdpAddress.sin_port == clientUDPAddress.sin_port) {
+          connectedClients[i].status = 1;
+        }
+
+
+
+      }
       // handle status packet
       break;
       default:
@@ -109,10 +137,15 @@ void* thread_function() {
       if (clientUdpAddress.sin_addr.s_addr == 0 && clientUdpAddress.sin_port == 0) {
         continue;
       }
+      if (connectedClients[i].status == 0) {
+        continue;
+      }
+      connectedClients[i].status = 0;
       sendUdpMessage(listeningUDPSocketDescriptor, clientUdpAddress, statusPacket, debugFlag);
       printf("i: %d\n", i);
     }
     usleep(STATUS_SEND_INTERVAL);
+    
   }
 }
 
