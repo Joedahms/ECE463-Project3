@@ -141,10 +141,16 @@ void* thread_function() {
         continue;
       }
       connectedClients[i].status = 0;
+      connectedClients[i].requestedStatus = 1;
       sendUdpMessage(listeningUDPSocketDescriptor, clientUdpAddress, statusPacket, debugFlag);
       printf("i: %d\n", i);
     }
     usleep(STATUS_SEND_INTERVAL);
+    for (i = 0; i < 100; i++) {
+      if (connectedClients[i].requestedStatus == 1 && connectedClients[i].status == 0) {
+        memset(&connectedClients[i], 0, sizeof(connectedClients[i]));
+      }
+    }
     
   }
 }

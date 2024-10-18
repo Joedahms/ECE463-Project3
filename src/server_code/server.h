@@ -9,6 +9,7 @@ struct connectedClient {
   struct sockaddr_in socketUdpAddress;          // Address structure of connected client's UDP socket
   char availableResources[RESOURCE_ARRAY_SIZE]; // Filenames of files the client is willing to share
   uint8_t status;
+  uint8_t requestedStatus;
 };
 
 void shutdownServer(int);                       // Gracefully shutdown the server
