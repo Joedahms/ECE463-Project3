@@ -23,10 +23,12 @@ uint8_t debugFlag = 0;  // Can add conditional statements with this flag to prin
 // Global variables (for signal handler)
 int udpSocketDescriptor;
 char* userInput;
+char* buffer;
 
 // Connection packet delimiters that are constant for all connection packets
 // See packet.h & packet.c
 extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
+extern struct StatusPacketDelimiters statusPacketDelimiters;
 
 // Main
 int main(int argc, char* argv[]) {
@@ -71,7 +73,18 @@ int main(int argc, char* argv[]) {
   sendUdpMessage(udpSocketDescriptor, serverAddress, connectionPacket, debugFlag);  // Send connection packet to the server
   free(connectionPacket);                                                           // Free connection packet
 
+
+  struct StatusPacketFields statusPacketFields;
+  strcpy(statusPacketFields.status, "testing");
+  char* statusPacket = calloc(1, STATUS_PACKET_SIZE);
+  buildStatusPacket(statusPacket, statusPacketFields, debugFlag);       // Build the entire connection packet
+  sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);  // Send connection packet to the server
+  free(statusPacket);                                                           // Free connection packet
+
+
   fd_set read_fds;
+
+  buffer = calloc(1, 1000);
 
   // Constantly check user input
   while(1) {
@@ -95,12 +108,22 @@ int main(int argc, char* argv[]) {
         continue;
       }
     }
-    if (FD_ISSET(udpSocketDescriptor, &read_fds)) {
-      receiveMessageFromServer();
+    if (FD_ISSET(udpSocketDescriptor, &read_fds)) { // Message in UDP socket queue
+      int bytesReceived = recvfrom(udpSocketDescriptor, buffer, USER_INPUT_BUFFER_LENGTH, 0, NULL, NULL);
+      int packetType = getPacketType(buffer);
+
+      // Assume that it is a status packet
+      struct StatusPacketFields statusPacketFields;
+      strcpy(statusPacketFields.status, "testing");
+      char* statusPacket = calloc(1, STATUS_PACKET_SIZE);
+      buildStatusPacket(statusPacket, statusPacketFields, debugFlag);               // Build the entire connection packet
+      sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);  // Send connection packet to the server
+      free(statusPacket);                                                           // Free connection packet
     }
   }
 	return 0;
 } 
+
 
 /*
  * Name: shutdownClient
@@ -110,10 +133,12 @@ int main(int argc, char* argv[]) {
  */
 void shutdownClient(int signal) {
   free(userInput);            // Free user input
+  free(buffer);
   close(udpSocketDescriptor); // Close UDP socket
   printf("\n");
   exit(0);
 }
+
 
 /*
   * Name: getUserInput
@@ -125,6 +150,7 @@ void getUserInput(char* userInput) {
   fgets(userInput, USER_INPUT_BUFFER_LENGTH, stdin);  // Get the input
   userInput[strcspn(userInput, "\n")] = 0;            // Remove \n
 }
+
 
 /*
   * Name: receiveMessageFromServer
@@ -146,7 +172,7 @@ void receiveMessageFromServer() {
     }
 }
 
-// Get available resources on client and add to connection packet
+
 /*
   * Name: getAvailableResources
   * Purpose: Get the available resources on the client and add them to the available
@@ -178,4 +204,3 @@ int getAvailableResources(char* availableResources, const char* directoryName) {
   } 
   return 0;
 }
-
