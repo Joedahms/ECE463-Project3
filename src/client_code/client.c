@@ -108,22 +108,22 @@ int main(int argc, char* argv[]) {
         continue;
       }
     }
-    if (FD_ISSET(udpSocketDescriptor, &read_fds)) {
+    if (FD_ISSET(udpSocketDescriptor, &read_fds)) { // Message in UDP socket queue
       int bytesReceived = recvfrom(udpSocketDescriptor, buffer, USER_INPUT_BUFFER_LENGTH, 0, NULL, NULL);
-      printf("buffer: %s\n", buffer);
       int packetType = getPacketType(buffer);
-      printf("packet type: %d\n", packetType);
 
+      // Assume that it is a status packet
       struct StatusPacketFields statusPacketFields;
       strcpy(statusPacketFields.status, "testing");
       char* statusPacket = calloc(1, STATUS_PACKET_SIZE);
-      buildStatusPacket(statusPacket, statusPacketFields, debugFlag);       // Build the entire connection packet
+      buildStatusPacket(statusPacket, statusPacketFields, debugFlag);               // Build the entire connection packet
       sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);  // Send connection packet to the server
       free(statusPacket);                                                           // Free connection packet
     }
   }
 	return 0;
 } 
+
 
 /*
  * Name: shutdownClient
@@ -139,6 +139,7 @@ void shutdownClient(int signal) {
   exit(0);
 }
 
+
 /*
   * Name: getUserInput
   * Purpose: Get user input from standard in and remove the newline
@@ -149,6 +150,7 @@ void getUserInput(char* userInput) {
   fgets(userInput, USER_INPUT_BUFFER_LENGTH, stdin);  // Get the input
   userInput[strcspn(userInput, "\n")] = 0;            // Remove \n
 }
+
 
 /*
   * Name: receiveMessageFromServer
@@ -170,7 +172,7 @@ void receiveMessageFromServer() {
     }
 }
 
-// Get available resources on client and add to connection packet
+
 /*
   * Name: getAvailableResources
   * Purpose: Get the available resources on the client and add them to the available
@@ -202,4 +204,3 @@ int getAvailableResources(char* availableResources, const char* directoryName) {
   } 
   return 0;
 }
-

@@ -16,11 +16,13 @@ struct ConnectionPacketDelimiters connectionPacketDelimiters = {
   "endconnect"    // end
 };
 
+
 struct StatusPacketDelimiters statusPacketDelimiters = {
   "startstatus",
   "$",
   "endstatus"
 };
+
 
 int getPacketType(const char* packet) {
   char* temppacketStart = calloc(1, CONNECTION_PACKET_SIZE);    // Allocate size for a copy of the incoming packet
@@ -49,6 +51,7 @@ int getPacketType(const char* packet) {
   free(packetBeginning);
   return returnVal;
 }
+
 
 /*
   * Name: buildConnectionPacket
@@ -88,6 +91,7 @@ void buildConnectionPacket(char* builtPacket, struct ConnectionPacketFields conn
     printf("Entire connection packet: %s\n", builtPacket);
   }
 }
+
 
 /*
   * Name: readConnectionPacket
@@ -132,6 +136,7 @@ int readConnectionPacket(char* packetToBeRead, struct ConnectionPacketFields* re
 
   return 0;
 }
+
 
 void buildStatusPacket(char* builtPacket, struct StatusPacketFields statusPacketFields, uint8_t debugFlag) {
   // Add beginning and middle delimiter
@@ -180,4 +185,3 @@ int readStatusPacket(char* packetToBeRead, struct StatusPacketFields* statusPack
 
   return 0;
 }
-

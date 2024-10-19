@@ -30,3 +30,10 @@ files and executables. Any files/directories that are created when compiling are
 - Do not implement communication between clients. Will be implemented in the next stage.
 - Optional: Clients can take a script for testing purposes.
 
+## Code Style Conventions
+- Types camel case with first character uppercase
+- Variables and functions camel case
+- Double space between functions
+- Single space after commas
+- Single space before and after =
+

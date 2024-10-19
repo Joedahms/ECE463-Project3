@@ -41,6 +41,7 @@ void checkCommandLineArguments(int argc, char** argv, uint8_t* debugFlag) {
 	}
 }
 
+
 /*
   * Name: sendUdpMessage
   * Purpose: Send a message via UDP
@@ -72,6 +73,7 @@ void sendUdpMessage(int udpSocketDescriptor, struct sockaddr_in destinationAddre
   }
 }
 
+
 /*
   * Name: printReceivedMessage
   * Purpose: Print out a message along with its source
@@ -93,6 +95,7 @@ void printReceivedMessage(struct sockaddr_in sender, int bytesReceived, char* me
     printf("Received %d byte message\n", bytesReceived);
   }
 }
+
 
 /*
   * Name: readFile
@@ -142,6 +145,7 @@ int readFile(char* fileName, char* buffer, uint8_t debugFlag) {
   return 0;
 }
 
+
 /*
   * Name: writeFile
   * Purpose: Open a file and write to it
@@ -170,6 +174,7 @@ int writeFile(char* fileName, char* fileContents, size_t fileSize) {
   }
   return 0;
 }
+
 
 /*
  * Name: setupUdpSocket
@@ -211,6 +216,7 @@ int setupUdpSocket(struct sockaddr_in serverAddress, uint8_t bindFlag) {
   return udpSocketDescriptor;
 }
 
+
 /*
   * Name: checkUdpSocket
   * Purpose: Check if there is an incoming message on a UDP port.
@@ -238,6 +244,7 @@ int checkUdpSocket(int listeningUDPSocketDescriptor, struct sockaddr_in* incomin
   printReceivedMessage(*incomingAddress, bytesReceived, message, debugFlag); 
   return 1;
 }
+
 
 /*
   * Name: handleErrorNonBlocking
