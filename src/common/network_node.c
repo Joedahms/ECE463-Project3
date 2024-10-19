@@ -43,7 +43,6 @@ void checkCommandLineArguments(int argc, char** argv, uint8_t* debugFlag) {
 
 
 /*
-  * Name: sendUdpMessage
   * Purpose: Send a message via UDP
   * Input: 
   * - Socket to send the message out on
@@ -57,18 +56,14 @@ void sendUdpMessage(int udpSocketDescriptor, struct sockaddr_in destinationAddre
     printf("Sending UDP message:\n");
     printf("%s\n", message);
   }
-  else {
-    printf("Sending UDP message...\n"); 
-  }
 
-  // Send message to destinationAddress over udpSocketDescriptor
   int sendtoReturnValue = 0;
   sendtoReturnValue = sendto(udpSocketDescriptor, message, strlen(message), 0, (struct sockaddr *)&destinationAddress, sizeof(destinationAddress));
   if (sendtoReturnValue == -1) {
     perror("UDP send error");
     exit(1);
   }
-  else {
+  else if (debugFlag){
     printf("UDP message sent\n");
   }
 }
@@ -90,9 +85,6 @@ void printReceivedMessage(struct sockaddr_in sender, int bytesReceived, char* me
     unsigned short senderPort = ntohs(sender.sin_port);
     printf("Received %d byte message from %ld:%d:\n", bytesReceived, senderAddress, senderPort);
     printf("%s\n", message);
-  }
-  else {
-    printf("Received %d byte message\n", bytesReceived);
   }
 }
 

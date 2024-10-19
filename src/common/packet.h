@@ -34,12 +34,25 @@ struct StatusPacketFields {
   char status[STATUS_SIZE];
 };
 
+struct ResourcePacketDelimiters {
+  char beginning[20]; 
+  char middle[20];
+  char end[20];
+};
+
+struct ResourcePacketFields {
+  char test[20];
+};
+
 int getPacketType(const char*);
 
-void buildConnectionPacket(char*, struct ConnectionPacketFields, uint8_t);  // Build a connection packet with the delimiters and the fields
-int readConnectionPacket(char*, struct ConnectionPacketFields*);            // Get the fields out of a connection packet
+void buildConnectionPacket(char*, struct ConnectionPacketFields, uint8_t);
+int readConnectionPacket(char*, struct ConnectionPacketFields*);
 
 void buildStatusPacket(char*, struct StatusPacketFields, uint8_t);
 int readStatusPacket(char*, struct StatusPacketFields*);
+
+void buildResourcePacket(char*, struct ResourcePacketFields, uint8_t);
+int readResourcePacket(char*, struct ResourcePacketFields*);
 
 #endif

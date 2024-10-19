@@ -15,7 +15,6 @@
 #include "../common/packet.h"
 #include "server.h"
 
-// Global flags
 uint8_t debugFlag = 0;            // Can add conditional statements with this flag to print out extra info
 
 // Global variables (for signal handler)
@@ -27,7 +26,7 @@ struct connectedClient connectedClients[MAX_CONNECTED_CLIENTS];
 
 extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
 extern struct StatusPacketDelimiters statusPacketDelimiters;
-
+extern struct ResourcePacketDelimiters resourcePacketDelimiters;
 
 // Main fucntion
 int main(int argc, char* argv[]) {
@@ -42,13 +41,13 @@ int main(int argc, char* argv[]) {
 
   // Initialize socket address stuctures
   struct sockaddr_in serverAddress;                   // Socket address that clients should connect to
-  struct sockaddr_in clientUDPAddress;                // Client's UDP info
+  struct sockaddr_in clientUDPAddress;
 
   // Set up server sockaddr_in data structure
-  memset(&serverAddress, 0, sizeof(serverAddress));   // 0 out
+  memset(&serverAddress, 0, sizeof(serverAddress));
   serverAddress.sin_family = AF_INET;                 // IPV4
   serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);  
-  serverAddress.sin_port = htons(PORT);               // Port
+  serverAddress.sin_port = htons(PORT);
   
   checkCommandLineArguments(argc, argv, &debugFlag);  // Check if user passed any arguments
 
@@ -56,7 +55,6 @@ int main(int argc, char* argv[]) {
   
   packet = calloc(1, INITIAL_MESSAGE_SIZE);          // Space for incoming packets
   
-  // Whether or not data is available at the socket. If it is, what kind.
   int udpStatus;
   int packetType;
 
@@ -77,24 +75,24 @@ int main(int argc, char* argv[]) {
       if (debugFlag) {
         printf("Connection packet received\n");
       }
-      handleConnectionPacket(packet, clientUDPAddress);
-      break;                                                                // Break connected packet
+      handleConnectionPacket(packet, clientUDPAddress, debugFlag);
+      break;
 
       case 1:                                                               // Status packet
       if (debugFlag) {
         printf("Status packet received\n");
       }
 
-      struct StatusPacketFields statusPacketFields;                         // Struct to store what was sent in the status packet
+      struct StatusPacketFields statusPacketFields;
       memset(&statusPacketFields, 0, sizeof(statusPacketFields));
-      uint8_t validPacket = readStatusPacket(packet, &statusPacketFields);  // Read the fields from the packet
-      if (validPacket == -1) {                                              // Check if the packet is valid
+      uint8_t validPacket = readStatusPacket(packet, &statusPacketFields);
+      if (validPacket == -1) {
           break;
       }
 
-      int handleStatusReturn = handleStatusPacket(clientUDPAddress);        // Handle the packet
+      int handleStatusReturn = handleStatusPacket(clientUDPAddress);
+      break;
 
-      break;                                                                // Break status packet
       default:
     }
   } // while(1)
@@ -102,7 +100,6 @@ int main(int argc, char* argv[]) {
 } // main
 
 /*
-  * Name: checkClientStatus
   * Purpose: Check if clients are still connected to the server. Send every connected client
   * a packet asking if they are still connected. If they send a response within the set time frame,
   * they are considered to still be connected. If they do not send a packet back, they are considered
@@ -114,16 +111,15 @@ int main(int argc, char* argv[]) {
   * duration of the main process. It only exits when the server shuts down.
 */
 void* checkClientStatus() {
-  int clientIndex;                                                // Index for looping through all connected clients
   struct StatusPacketFields statusPacketFields;
-  strcpy(statusPacketFields.status, "testing");                   // Set the status field
+  strcpy(statusPacketFields.status, "testing");
   char* statusPacket = calloc(1, STATUS_PACKET_SIZE);
-  buildStatusPacket(statusPacket, statusPacketFields, debugFlag); // Build the entire connection packet
+  buildStatusPacket(statusPacket, statusPacketFields, debugFlag);
 
-  struct connectedClient* client;       // Current connected client in the loop
+  struct connectedClient* client;
   struct sockaddr_in clientUdpAddress;
 
-  // Loop as long as the server is running
+  int clientIndex;
   while(1) {
     for (clientIndex = 0; clientIndex < 100; clientIndex++) {
       client = &connectedClients[clientIndex];
@@ -131,10 +127,10 @@ void* checkClientStatus() {
 
       // Check that client is initialized and connected
       if (clientUdpAddress.sin_addr.s_addr == 0 && clientUdpAddress.sin_port == 0) {
-        continue; // Uninitialized
+        continue;
       }
       if (client->status == 0) {
-        continue; // Disconnected
+        continue;
       }
 
       client->status = 0;           // Assume client is disconnected and will not respond
@@ -151,17 +147,18 @@ void* checkClientStatus() {
     for (clientIndex = 0; clientIndex < 100; clientIndex++) {
       client = &connectedClients[clientIndex];
       if (client->requestedStatus == 1 && client->status == 0) {
-        printf("Client %d disconnected\n", clientIndex);
+        if (debugFlag) {
+          printf("Client %d disconnected\n", clientIndex);
+        }
         memset(client, 0, sizeof(*client));
       }
     }
   }
-  free(statusPacket); // Packet has been sent
+  free(statusPacket);
 }
 
 
 /*
-* Name: shutdownServer
 * Purpose: Gracefully shutdown the server when the user enters
 * ctrl-c. Closes the sockets and frees addrinfo data structure
 * Input: The signal raised
@@ -176,7 +173,6 @@ void shutdownServer(int signal) {
 
 
 /*
-  * Name: findEmptyConnectedClient
   * Purpose: Loop through the connectedClients array until an empty spot is found. Looks for unset
   * UDP port.
   * Input: debugFlag
@@ -186,8 +182,8 @@ void shutdownServer(int signal) {
 */
 int findEmptyConnectedClient(uint8_t debugFlag) {
   int connectedClientsIndex;
-  for (connectedClientsIndex = 0; connectedClientsIndex < MAX_CONNECTED_CLIENTS; connectedClientsIndex++) { // Loop through all connected clients
-    int port = ntohs(connectedClients[connectedClientsIndex].socketUdpAddress.sin_port);  // Check if the port has been set
+  for (connectedClientsIndex = 0; connectedClientsIndex < MAX_CONNECTED_CLIENTS; connectedClientsIndex++) {
+    int port = ntohs(connectedClients[connectedClientsIndex].socketUdpAddress.sin_port);
     if (port == 0) {                        // Port not set
       return connectedClientsIndex;         // Empty spot, return index
       if (debugFlag) {
@@ -205,7 +201,6 @@ int findEmptyConnectedClient(uint8_t debugFlag) {
 
 
 /*
-  * Name: printAllConnectedClients
   * Purpose: Print all the connected clients in a readable format
   * Input: None
   * Output: None
@@ -239,8 +234,8 @@ void printAllConnectedClients() {
   free(availableResources);
 }
 
+
 /*
-  * Name: handleConnectionPacket
   * Purpose: When the server receives a connection packet, this function handles the data
   * in that packet. It finds an empty connected client and enters the packet sender's information
   * into that empty spot.
@@ -251,28 +246,30 @@ void printAllConnectedClients() {
   * -1: Packet received is not a valid connection packet
   * 0: Packet received is a valid connection packet and it was successfully handled
 */
-int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress) {
-  // Read connection packet
-  struct ConnectionPacketFields connectionPacketFields; // Struct to store the sent data in
-  memset(&connectionPacketFields, 0, sizeof(connectionPacketFields));                                                 // Clear out struct used to store sent data
+int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress, uint8_t debugFlag) {
+  struct ConnectionPacketFields connectionPacketFields;
+  memset(&connectionPacketFields, 0, sizeof(connectionPacketFields));
   uint8_t validPacket = readConnectionPacket(packet, &connectionPacketFields);
-  if (validPacket == -1) {                        // Check if the packet is valid
+  if (validPacket == -1) {
     printf("Invalid connection packet received\n");
     return -1;
   }
 
   // Find an empty connection client and fill it out with the info from the connection packet
-  int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);                                                // Find an empty connected client
+  int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);
   strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);                      // username
   connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;    // UDP address
   connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                  // UDP port
   strcpy(connectedClients[emptyConnectedClientIndex].availableResources, connectionPacketFields.availableResources);  // Available resources
-  printAllConnectedClients();
+
+  if (debugFlag) {
+    printAllConnectedClients();
+  }
   return 0;
 }
 
+
 /*
-  * Name: handleStatusPacket
   * Purpose: When the server receives a status packet, this function handles the data
   * in that packet. It loops through all the connected clients and finds the one who sent
   * the status packet. The status of the client who sent the packet is set to indicate

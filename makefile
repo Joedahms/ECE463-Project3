@@ -7,8 +7,8 @@ STEST = server_test_directory
 
 all: server client
 
-server: server.o network_node.o packet.o
-	gcc server.o network_node.o packet.o -o server
+server: server.o network_node.o packet.o resource_directory.o
+	gcc server.o network_node.o packet.o resource_directory.o -o server
 	# mkdir -p server_test_directory
 	mv server server_test_directory
 
@@ -28,6 +28,9 @@ network_node.o: $(CO)network_node.c $(CO)network_node.h
 
 packet.o: $(CO)packet.c $(CO)packet.h
 	gcc $(CFLAGS) $(CO)packet.c
+
+resource_directory.o: $(S)resource_directory.c $(S)resource_directory.h
+	gcc $(CFLAGS) $(S)resource_directory.c
 
 clean:
 	#rm -rf $(CLTEST)

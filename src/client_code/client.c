@@ -25,10 +25,11 @@ int udpSocketDescriptor;
 char* userInput;
 char* buffer;
 
-// Connection packet delimiters that are constant for all connection packets
+// Packet delimiters that are constant for all packets
 // See packet.h & packet.c
 extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
 extern struct StatusPacketDelimiters statusPacketDelimiters;
+extern struct ResourcePacketDelimiters resourcePacketDelimiters;
 
 // Main
 int main(int argc, char* argv[]) {
@@ -50,22 +51,22 @@ int main(int argc, char* argv[]) {
   checkCommandLineArguments(argc, argv, &debugFlag);
  
   // Setup UDP socket
-  struct sockaddr_in udpAddress;                                                    // Will leave empty because do not need to bind
-  memset(&udpAddress, 0, sizeof(udpAddress));                                       // 0 out
-  udpSocketDescriptor = setupUdpSocket(udpAddress, 0);                              // Setup udp socket without binding
+  struct sockaddr_in udpAddress;
+  memset(&udpAddress, 0, sizeof(udpAddress));
+  udpSocketDescriptor = setupUdpSocket(udpAddress, 0);
 
-  struct ConnectionPacketFields connectionPacketFields;                             // Struct to store the fields to send
+  struct ConnectionPacketFields connectionPacketFields;
   
   // Get available resources on client and add to connection packet
-  char* availableResources = calloc(1, RESOURCE_ARRAY_SIZE);                        // Allocate space for the string of available resources
+  char* availableResources = calloc(1, RESOURCE_ARRAY_SIZE);
   if (getAvailableResources(availableResources, "Public") == -1) {
     exit(1);
   }
-  strcpy(connectionPacketFields.availableResources, availableResources);            // Add the resource string to the connection packet
-  free(availableResources);                                                         // Free available resources string
+  strcpy(connectionPacketFields.availableResources, availableResources);
+  free(availableResources);
 
   // Get username
-  strcpy(connectionPacketFields.username, getenv("USER"));                          // Set the username by using the USER environment variable
+  strcpy(connectionPacketFields.username, getenv("USER"));
 
   // Build and send the connection packet
   char* connectionPacket = calloc(1, CONNECTION_PACKET_SIZE);                       // Allocate connection packet string
@@ -100,8 +101,11 @@ int main(int argc, char* argv[]) {
     }
 
     if (FD_ISSET(0, &read_fds)) {
-      // Get user input and store in userInput buffer
       getUserInput(userInput);
+
+      if (strcmp(userInput, "test") == 0) {
+        printf("yay\n");
+      }
 
       // User just pressed return
       if (strlen(userInput) == 0) {  

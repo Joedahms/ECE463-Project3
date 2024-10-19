@@ -23,6 +23,11 @@ struct StatusPacketDelimiters statusPacketDelimiters = {
   "endstatus"
 };
 
+struct ResourcePacketDelimiters resourcePacketDelimiters = {
+  "startresource",
+  "$",
+  "endresource"
+};
 
 int getPacketType(const char* packet) {
   char* temppacketStart = calloc(1, CONNECTION_PACKET_SIZE);    // Allocate size for a copy of the incoming packet
@@ -44,6 +49,9 @@ int getPacketType(const char* packet) {
   }
   else if (strcmp(packetBeginning, statusPacketDelimiters.beginning) == 0) {
     returnVal = 1;
+  }
+  else if (strcmp(packetBeginning, resourcePacketDelimiters.beginning) == 0) {
+    returnVal = 2;
   }
 
   free(temppacketStart);
@@ -176,9 +184,57 @@ int readStatusPacket(char* packetToBeRead, struct StatusPacketFields* statusPack
   }
   packetToBeRead++;                                                     // Past middle delimiter
 
-  // Username
+  // Status
   while (strncmp(packetToBeRead, middle, 1) != 0) {                     // While not at the end of status
     strncat(statusPacketFields->status, packetToBeRead, 1); 
+    packetToBeRead++;
+  }
+  packetToBeRead++; // Past middle delimiter
+
+  return 0;
+}
+
+void buildResourcePacket(char* builtPacket, struct ResourcePacketFields resourcePacketFields, uint8_t debugFlag) {
+  // Add beginning and middle delimiter
+  strncat(builtPacket, resourcePacketDelimiters.beginning, strlen(resourcePacketDelimiters.beginning));
+  strcat(builtPacket, resourcePacketDelimiters.middle);
+  if (debugFlag) {
+    printf("Resource packet after adding beginning and a middle: %s\n", builtPacket);
+  }
+
+  // Add status and a middle delimiter
+  strcat(builtPacket, resourcePacketFields.test);
+  strcat(builtPacket, resourcePacketDelimiters.middle);
+  if (debugFlag) {
+    printf("Resource packet after adding status and a middle: %s\n", builtPacket);
+  }
+
+  // Add end delimiter and if the debug flag is set, print out the whole packet
+  strcat(builtPacket, resourcePacketDelimiters.end);
+  if (debugFlag) {
+    printf("Entire resource packet: %s\n", builtPacket);
+  }
+}
+
+int readResourcePacket(char* packetToBeRead, struct ResourcePacketFields* resourcePacketFields) {
+  // Delimiters
+  const char* beginning = resourcePacketDelimiters.beginning;
+  const char* middle = resourcePacketDelimiters.middle;
+  const char* end = resourcePacketDelimiters.end;
+
+  // Beginning
+  if (strncmp(packetToBeRead, beginning, strlen(beginning)) != 0) {     // Check if the beginning of the packet is correct
+    return -1;
+  }
+  packetToBeRead += strlen(beginning);                                  // Advance past the beginning
+  if (strncmp(packetToBeRead, "$", 1) != 0) {                           // Make sure there is a middle delimiter after the beginning
+    return -1;
+  }
+  packetToBeRead++;                                                     // Past middle delimiter
+
+  // Test
+  while (strncmp(packetToBeRead, middle, 1) != 0) {                     // While not at the end of status
+    strncat(resourcePacketFields->test, packetToBeRead, 1); 
     packetToBeRead++;
   }
   packetToBeRead++; // Past middle delimiter

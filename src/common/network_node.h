@@ -1,6 +1,5 @@
 // Template for function comments
 /*
-  * Name:
   * Purpose:
   * Input: 
   * Output:
