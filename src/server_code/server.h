@@ -5,7 +5,7 @@
 #define MAX_CONNECTED_CLIENTS 100               // Maximum number of clients that can be connected to the server
 
 // Data about a client connected to the server
-struct connectedClient {
+struct ConnectedClient {
   char username[USERNAME_SIZE];                 // Client username
   struct sockaddr_in socketUdpAddress;          // Address structure of connected client's UDP socket
   char availableResources[RESOURCE_ARRAY_SIZE]; // Filenames of files the client is willing to share
@@ -20,6 +20,7 @@ void printAllConnectedClients();                // Print out all connected clien
 
 int handleConnectionPacket(char*, struct sockaddr_in, uint8_t);
 int handleStatusPacket(struct sockaddr_in);
+int handleResourcePacket(struct sockaddr_in);
 
 
 #endif

@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
   strcpy(connectionPacketFields.username, getenv("USER"));
 
   // Build and send the connection packet
-  char* connectionPacket = calloc(1, CONNECTION_PACKET_SIZE);                       // Allocate connection packet string
+  char* connectionPacket = calloc(1, MAX_CONNECTION_PACKET_SIZE);                       // Allocate connection packet string
   buildConnectionPacket(connectionPacket, connectionPacketFields, debugFlag);       // Build the entire connection packet
   sendUdpMessage(udpSocketDescriptor, serverAddress, connectionPacket, debugFlag);  // Send connection packet to the server
   free(connectionPacket);                                                           // Free connection packet
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
 
   struct StatusPacketFields statusPacketFields;
   strcpy(statusPacketFields.status, "testing");
-  char* statusPacket = calloc(1, STATUS_PACKET_SIZE);
+  char* statusPacket = calloc(1, MAX_STATUS_PACKET_SIZE);
   buildStatusPacket(statusPacket, statusPacketFields, debugFlag);       // Build the entire connection packet
   sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);  // Send connection packet to the server
   free(statusPacket);                                                           // Free connection packet
@@ -104,7 +104,12 @@ int main(int argc, char* argv[]) {
       getUserInput(userInput);
 
       if (strcmp(userInput, "test") == 0) {
-        printf("yay\n");
+        struct ResourcePacketFields resourcePacketFields;
+        strcpy(resourcePacketFields.test, "testing");
+        char* resourcePacket = calloc(1, MAX_RESOURCE_PACKET_SIZE);
+        buildResourcePacket(resourcePacket, resourcePacketFields, debugFlag);               // Build the entire connection packet
+        sendUdpMessage(udpSocketDescriptor, serverAddress, resourcePacket, debugFlag);  // Send connection packet to the server
+        free(resourcePacket);
       }
 
       // User just pressed return
@@ -119,10 +124,10 @@ int main(int argc, char* argv[]) {
       // Assume that it is a status packet
       struct StatusPacketFields statusPacketFields;
       strcpy(statusPacketFields.status, "testing");
-      char* statusPacket = calloc(1, STATUS_PACKET_SIZE);
-      buildStatusPacket(statusPacket, statusPacketFields, debugFlag);               // Build the entire connection packet
-      sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);  // Send connection packet to the server
-      free(statusPacket);                                                           // Free connection packet
+      char* statusPacket = calloc(1, MAX_STATUS_PACKET_SIZE);
+      buildStatusPacket(statusPacket, statusPacketFields, debugFlag);
+      sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);
+      free(statusPacket);
     }
   }
 	return 0;

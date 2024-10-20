@@ -22,7 +22,7 @@ int listeningUDPSocketDescriptor;
 char* packet;                    // packet received on UDP socket
 
 // Array of connected client data structures
-struct connectedClient connectedClients[MAX_CONNECTED_CLIENTS];
+struct ConnectedClient connectedClients[MAX_CONNECTED_CLIENTS];
 
 extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
 extern struct StatusPacketDelimiters statusPacketDelimiters;
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
       if (debugFlag) {
         printf("Connection packet received\n");
       }
-      handleConnectionPacket(packet, clientUDPAddress, debugFlag);
+      int connectionPacketReturn = handleConnectionPacket(packet, clientUDPAddress, debugFlag);
       break;
 
       case 1:                                                               // Status packet
@@ -92,6 +92,12 @@ int main(int argc, char* argv[]) {
 
       int handleStatusReturn = handleStatusPacket(clientUDPAddress);
       break;
+
+      case 2:
+      if (debugFlag) {
+        printf("Resource packet received\n");
+      }
+      int resourceReturn = handleResourcePacket(clientUDPAddress);
 
       default:
     }
@@ -113,10 +119,10 @@ int main(int argc, char* argv[]) {
 void* checkClientStatus() {
   struct StatusPacketFields statusPacketFields;
   strcpy(statusPacketFields.status, "testing");
-  char* statusPacket = calloc(1, STATUS_PACKET_SIZE);
+  char* statusPacket = calloc(1, MAX_STATUS_PACKET_SIZE);
   buildStatusPacket(statusPacket, statusPacketFields, debugFlag);
 
-  struct connectedClient* client;
+  struct ConnectedClient* client;
   struct sockaddr_in clientUdpAddress;
 
   int clientIndex;
@@ -281,7 +287,7 @@ int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress, ui
 */
 int handleStatusPacket(struct sockaddr_in clientUdpAddress) {
   int clientIndex;
-  struct connectedClient* currentClient;
+  struct ConnectedClient* currentClient;
 
   for (clientIndex = 0; clientIndex < MAX_CONNECTED_CLIENTS; clientIndex++) {                             // Loop through all clients
     currentClient = &connectedClients[clientIndex];
@@ -300,5 +306,16 @@ int handleStatusPacket(struct sockaddr_in clientUdpAddress) {
       currentClient->status = 1;                                                                          // Packet sender is client. They sent a response and are still connected
     }
   }
+  return 0;
+}
+
+int handleResourcePacket(struct sockaddr_in clientUdpAddress) {
+  int clientIndex = 0;
+  struct ConnectedClient* currentClient;
+
+  for (clientIndex = 0; clientIndex < MAX_CONNECTED_CLIENTS; clientIndex++) {
+    currentClient = &connectedClients[clientIndex];
+  }
+
   return 0;
 }

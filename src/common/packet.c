@@ -30,7 +30,7 @@ struct ResourcePacketDelimiters resourcePacketDelimiters = {
 };
 
 int getPacketType(const char* packet) {
-  char* temppacketStart = calloc(1, CONNECTION_PACKET_SIZE);    // Allocate size for a copy of the incoming packet
+  char* temppacketStart = calloc(1, MAX_CONNECTION_PACKET_SIZE);    // Allocate size for a copy of the incoming packet
   strcpy(temppacketStart, packet);                             // Copy the incoming packet
   char* temppacket = temppacketStart;
   char* middle = calloc(1, 20);
@@ -39,8 +39,8 @@ int getPacketType(const char* packet) {
   char* packetBeginning = calloc(1, 20);                    // Space for string for analyzing beginning of incoming packet
 
   while (strncmp(temppacket, middle, 1) != 0) {            // Traverse the beginning of the packet until a middle delimiter is hit
-    strncat(packetBeginning, temppacket, 1);               // Add a character from the incoming packet to the packet beginning string
-    temppacket++;                                          // Go to the next character
+    strncat(packetBeginning, temppacket, 1);
+    temppacket++;
   }
 
   int returnVal = -1;

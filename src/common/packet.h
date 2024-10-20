@@ -1,8 +1,9 @@
 #ifndef PACKET_H
 #define PACKET_H
 
-#define CONNECTION_PACKET_SIZE 200
-#define STATUS_PACKET_SIZE 200
+#define MAX_CONNECTION_PACKET_SIZE 200
+#define MAX_STATUS_PACKET_SIZE 200
+#define MAX_RESOURCE_PACKET_SIZE 200
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -41,7 +42,8 @@ struct ResourcePacketDelimiters {
 };
 
 struct ResourcePacketFields {
-  char test[20];
+  char username[100];
+  char resource
 };
 
 int getPacketType(const char*);
