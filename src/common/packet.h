@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
+#include <stdbool.h>
 
 #include "network_node.h"
 
@@ -42,19 +43,18 @@ struct ResourcePacketDelimiters {
 };
 
 struct ResourcePacketFields {
-  char username[100];
-  char resource
+  char test[20];
 };
 
 int getPacketType(const char*);
 
-void buildConnectionPacket(char*, struct ConnectionPacketFields, uint8_t);
+void buildConnectionPacket(char*, struct ConnectionPacketFields, bool);
 int readConnectionPacket(char*, struct ConnectionPacketFields*);
 
-void buildStatusPacket(char*, struct StatusPacketFields, uint8_t);
+void buildStatusPacket(char*, struct StatusPacketFields, bool);
 int readStatusPacket(char*, struct StatusPacketFields*);
 
-void buildResourcePacket(char*, struct ResourcePacketFields, uint8_t);
+void buildResourcePacket(char*, struct ResourcePacketFields, bool);
 int readResourcePacket(char*, struct ResourcePacketFields*);
 
 #endif

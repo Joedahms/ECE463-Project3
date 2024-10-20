@@ -15,7 +15,7 @@
 #include "../common/packet.h"
 #include "server.h"
 
-uint8_t debugFlag = 0;            // Can add conditional statements with this flag to print out extra info
+bool debugFlag = false;            // Can add conditional statements with this flag to print out extra info
 
 // Global variables (for signal handler)
 int listeningUDPSocketDescriptor;
@@ -135,12 +135,12 @@ void* checkClientStatus() {
       if (clientUdpAddress.sin_addr.s_addr == 0 && clientUdpAddress.sin_port == 0) {
         continue;
       }
-      if (client->status == 0) {
+      if (client->status == false) {
         continue;
       }
 
-      client->status = 0;           // Assume client is disconnected and will not respond
-      client->requestedStatus = 1;  // Requested a response from the client
+      client->status = false;           // Assume client is disconnected and will not respond
+      client->requestedStatus = true;  // Requested a response from the client
       sendUdpMessage(listeningUDPSocketDescriptor, clientUdpAddress, statusPacket, debugFlag);
       if (debugFlag) {
         printf("Status packet sent to client: %d\n", clientIndex);
@@ -152,7 +152,7 @@ void* checkClientStatus() {
     // If a response was requested and the client didn't send a response, remove them from the "user directory"
     for (clientIndex = 0; clientIndex < 100; clientIndex++) {
       client = &connectedClients[clientIndex];
-      if (client->requestedStatus == 1 && client->status == 0) {
+      if (client->requestedStatus == true && client->status == false) {
         if (debugFlag) {
           printf("Client %d disconnected\n", clientIndex);
         }
@@ -186,7 +186,7 @@ void shutdownServer(int signal) {
   * - -1: All spots in the connected client array are full
   * - Anything else: Index of the empty spot in the array
 */
-int findEmptyConnectedClient(uint8_t debugFlag) {
+int findEmptyConnectedClient(bool debugFlag) {
   int connectedClientsIndex;
   for (connectedClientsIndex = 0; connectedClientsIndex < MAX_CONNECTED_CLIENTS; connectedClientsIndex++) {
     int port = ntohs(connectedClients[connectedClientsIndex].socketUdpAddress.sin_port);
@@ -252,7 +252,7 @@ void printAllConnectedClients() {
   * -1: Packet received is not a valid connection packet
   * 0: Packet received is a valid connection packet and it was successfully handled
 */
-int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress, uint8_t debugFlag) {
+int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress, bool debugFlag) {
   struct ConnectionPacketFields connectionPacketFields;
   memset(&connectionPacketFields, 0, sizeof(connectionPacketFields));
   uint8_t validPacket = readConnectionPacket(packet, &connectionPacketFields);

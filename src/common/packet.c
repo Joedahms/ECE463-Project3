@@ -71,7 +71,7 @@ int getPacketType(const char* packet) {
   * - Debug flag
   * Output: None
 */
-void buildConnectionPacket(char* builtPacket, struct ConnectionPacketFields connectionPacketFields, uint8_t debugFlag) {
+void buildConnectionPacket(char* builtPacket, struct ConnectionPacketFields connectionPacketFields, bool debugFlag) {
   // Add beginning and middle delimiter
   strncat(builtPacket, connectionPacketDelimiters.beginning, strlen(connectionPacketDelimiters.beginning));
   strcat(builtPacket, connectionPacketDelimiters.middle);
@@ -146,7 +146,7 @@ int readConnectionPacket(char* packetToBeRead, struct ConnectionPacketFields* re
 }
 
 
-void buildStatusPacket(char* builtPacket, struct StatusPacketFields statusPacketFields, uint8_t debugFlag) {
+void buildStatusPacket(char* builtPacket, struct StatusPacketFields statusPacketFields, bool debugFlag) {
   // Add beginning and middle delimiter
   strncat(builtPacket, statusPacketDelimiters.beginning, strlen(statusPacketDelimiters.beginning));
   strcat(builtPacket, statusPacketDelimiters.middle);
@@ -194,7 +194,7 @@ int readStatusPacket(char* packetToBeRead, struct StatusPacketFields* statusPack
   return 0;
 }
 
-void buildResourcePacket(char* builtPacket, struct ResourcePacketFields resourcePacketFields, uint8_t debugFlag) {
+void buildResourcePacket(char* builtPacket, struct ResourcePacketFields resourcePacketFields, bool debugFlag) {
   // Add beginning and middle delimiter
   strncat(builtPacket, resourcePacketDelimiters.beginning, strlen(resourcePacketDelimiters.beginning));
   strcat(builtPacket, resourcePacketDelimiters.middle);

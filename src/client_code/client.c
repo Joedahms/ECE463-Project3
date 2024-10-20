@@ -12,13 +12,14 @@
 #include <signal.h>
 #include <errno.h>
 #include <dirent.h>
+#include <stdbool.h>
 
 #include "../common/network_node.h"
 #include "../common/packet.h"
 #include "client.h"
 
 // Global flags
-uint8_t debugFlag = 0;  // Can add conditional statements with this flag to print out extra info
+bool debugFlag = false;  // Can add conditional statements with this flag to print out extra info
 
 // Global variables (for signal handler)
 int udpSocketDescriptor;
