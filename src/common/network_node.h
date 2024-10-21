@@ -13,8 +13,8 @@
 #define MAX_FILE_SIZE 5000                                              // Maximum file length in bytes
 #define INITIAL_MESSAGE_SIZE 200                                        // Max size of the initial calibration message
 #define USER_INPUT_BUFFER_LENGTH 40                                     // Max size of message a user can input
-#define USERNAME_SIZE 20                                                // Max size of a username
-#define RESOURCE_ARRAY_SIZE 2000                                        // Max size of a string containing the available resources on a client
+#define MAX_USERNAME 20                                                // Max size of a username
+#define MAX_RESOURCE_ARRAY 2000                                        // Max size of a string containing the available resources on a client
 #define STATUS_SIZE 10
 
 #include <sys/types.h>

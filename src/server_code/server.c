@@ -14,19 +14,18 @@
 #include "../common/network_node.h"
 #include "../common/packet.h"
 #include "server.h"
+#include "resource.h"
 
 bool debugFlag = false;            // Can add conditional statements with this flag to print out extra info
 
-// Global variables (for signal handler)
+// Global so that signal handler can free resources
 int listeningUDPSocketDescriptor;
-char* packet;                    // packet received on UDP socket
+char* packet;
 
-// Array of connected client data structures
 struct ConnectedClient connectedClients[MAX_CONNECTED_CLIENTS];
+struct Resource* headResource;
 
-extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
-extern struct StatusPacketDelimiters statusPacketDelimiters;
-extern struct ResourcePacketDelimiters resourcePacketDelimiters;
+extern struct PacketDelimiters packetDelimiters;
 
 // Main fucntion
 int main(int argc, char* argv[]) {
@@ -39,6 +38,8 @@ int main(int argc, char* argv[]) {
     memset(&(connectedClients[i].socketUdpAddress), 0, sizeof(connectedClients[i].socketUdpAddress));
   }
 
+  struct Resource* headResource = NULL;
+
   // Initialize socket address stuctures
   struct sockaddr_in serverAddress;                   // Socket address that clients should connect to
   struct sockaddr_in clientUDPAddress;
@@ -46,26 +47,27 @@ int main(int argc, char* argv[]) {
   // Set up server sockaddr_in data structure
   memset(&serverAddress, 0, sizeof(serverAddress));
   serverAddress.sin_family = AF_INET;                 // IPV4
-  serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);  
+  serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
   serverAddress.sin_port = htons(PORT);
   
-  checkCommandLineArguments(argc, argv, &debugFlag);  // Check if user passed any arguments
+  checkCommandLineArguments(argc, argv, &debugFlag);
 
-  listeningUDPSocketDescriptor = setupUdpSocket(serverAddress, 1);  // Setup the UDP socket
+  listeningUDPSocketDescriptor = setupUdpSocket(serverAddress, 1);
   
-  packet = calloc(1, INITIAL_MESSAGE_SIZE);          // Space for incoming packets
+  packet = calloc(1, INITIAL_MESSAGE_SIZE);
   
-  int udpStatus;
-  int packetType;
+  bool packetAvailable = false;
+  int packetType = 0;
 
   pthread_t processId;
   pthread_create(&processId, NULL, checkClientStatus, NULL);
 
   // Continously listen for new UDP packets and new TCP connections
   while (1) {
-    udpStatus = checkUdpSocket(listeningUDPSocketDescriptor, &clientUDPAddress, packet, debugFlag);  // Check the UDP socket
+    memset(packet, 0, sizeof(packet));
+    packetAvailable = checkUdpSocket(listeningUDPSocketDescriptor, &clientUDPAddress, packet, debugFlag);  // Check the UDP socket
 
-    if (udpStatus == 0) { // Nothing available on the UDP socket
+    if (!packetAvailable) {
       continue;
     }
     packetType = getPacketType(packet);
@@ -82,22 +84,20 @@ int main(int argc, char* argv[]) {
       if (debugFlag) {
         printf("Status packet received\n");
       }
-
-      struct StatusPacketFields statusPacketFields;
-      memset(&statusPacketFields, 0, sizeof(statusPacketFields));
-      uint8_t validPacket = readStatusPacket(packet, &statusPacketFields);
-      if (validPacket == -1) {
-          break;
-      }
+      struct PacketFields packetFields;
+      memset(&packetFields, 0, sizeof(packetFields));
+      readPacket(packet, &packetFields);
 
       int handleStatusReturn = handleStatusPacket(clientUDPAddress);
       break;
 
       case 2:
+        /*
       if (debugFlag) {
         printf("Resource packet received\n");
       }
       int resourceReturn = handleResourcePacket(clientUDPAddress);
+      */
 
       default:
     }
@@ -117,10 +117,12 @@ int main(int argc, char* argv[]) {
   * duration of the main process. It only exits when the server shuts down.
 */
 void* checkClientStatus() {
-  struct StatusPacketFields statusPacketFields;
-  strcpy(statusPacketFields.status, "testing");
-  char* statusPacket = calloc(1, MAX_STATUS_PACKET_SIZE);
-  buildStatusPacket(statusPacket, statusPacketFields, debugFlag);
+  struct PacketFields packetFields;
+  strcpy(packetFields.type, "status");
+  strcat(packetFields.data, "testing");
+  strncat(packetFields.data, packetDelimiters.middle, packetDelimiters.middleLength);
+  char* statusPacket = calloc(1, MAX_PACKET);
+  buildPacket(statusPacket, packetFields, debugFlag);
 
   struct ConnectedClient* client;
   struct sockaddr_in clientUdpAddress;
@@ -139,11 +141,11 @@ void* checkClientStatus() {
         continue;
       }
 
-      client->status = false;           // Assume client is disconnected and will not respond
-      client->requestedStatus = true;  // Requested a response from the client
+      client->status = false;         // Assume client is disconnected and will not respond
+      client->requestedStatus = true; // Requested a response from the client
       sendUdpMessage(listeningUDPSocketDescriptor, clientUdpAddress, statusPacket, debugFlag);
       if (debugFlag) {
-        printf("Status packet sent to client: %d\n", clientIndex);
+        printf("Status packet sent to client %d\n", clientIndex);
       }
     }
     
@@ -213,31 +215,37 @@ int findEmptyConnectedClient(bool debugFlag) {
 */
 void printAllConnectedClients() {
   printf("\n*** PRINTING ALL CONNECTED CLIENTS ***\n");
-  int i;
-  unsigned long udpAddress;                                                   // Not in human readable format
+  unsigned long udpAddress;
   unsigned short udpPort;
-  char* username = calloc(1, USERNAME_SIZE);                                  // Username
-  char* availableResources = calloc(1, RESOURCE_ARRAY_SIZE);
+  char* username = calloc(1, MAX_USERNAME);
+ // char* availableResources = calloc(1, MAX_RESOURCE_ARRAY);
 
+  int i;
   for (i = 0; i < MAX_CONNECTED_CLIENTS; i++) {
-    udpAddress = ntohl(connectedClients[i].socketUdpAddress.sin_addr.s_addr); // UDP address
-    udpPort = ntohs(connectedClients[i].socketUdpAddress.sin_port);           // UDP port
-    if (udpAddress == 0 && udpPort == 0) {                                    // Check if the client is empty
+    udpAddress = ntohl(connectedClients[i].socketUdpAddress.sin_addr.s_addr);
+    udpPort = ntohs(connectedClients[i].socketUdpAddress.sin_port);
+    if (udpAddress == 0 && udpPort == 0) {
       i++;
       continue;
     }
     strcpy(username, connectedClients[i].username);
-    strcpy(availableResources, connectedClients[i].availableResources);
+//    strcpy(availableResources, connectedClients[i].availableResources);
     printf("CONNECTED CLIENT %d\n", i);
-    printf("USERNAME: %s\n", username);                                       // Print username
-    memset(username, 0, USERNAME_SIZE);                                       // 0 out for next iteration
-    printf("UDP ADDRESS: %ld\n", udpAddress);                                 // Print UDP address
-    printf("UDP PORT: %d\n", udpPort);                                        // Print UDP port
-    printf("AVAILABLE RESOURCES: %s\n", availableResources);                  // Print available resources
-    memset(availableResources, 0, RESOURCE_ARRAY_SIZE);                       // 0 out for next iteration
+    printf("USERNAME: %s\n", username);
+    memset(username, 0, MAX_USERNAME);
+    printf("UDP ADDRESS: %ld\n", udpAddress);
+    printf("UDP PORT: %d\n", udpPort);
+    printf("AVAILABLE RESOURCES:\n");
+    struct Resource* currentResource = headResource;
+    while (currentResource) {
+      printf("USERNAME: %s\n", currentResource->username);
+      printf("FILENAME: %s\n", currentResource->filename);
+      currentResource = currentResource->next;
+    }
+//    memset(availableResources, 0, MAX_RESOURCE_ARRAY);
   }
   free(username);
-  free(availableResources);
+//  free(availableResources);
 }
 
 
@@ -253,27 +261,59 @@ void printAllConnectedClients() {
   * 0: Packet received is a valid connection packet and it was successfully handled
 */
 int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress, bool debugFlag) {
-  struct ConnectionPacketFields connectionPacketFields;
-  memset(&connectionPacketFields, 0, sizeof(connectionPacketFields));
-  uint8_t validPacket = readConnectionPacket(packet, &connectionPacketFields);
-  if (validPacket == -1) {
-    printf("Invalid connection packet received\n");
-    return -1;
+  int emptyClientIndex = findEmptyConnectedClient(debugFlag);
+  struct ConnectedClient* emptyClient = &connectedClients[emptyClientIndex];
+
+  emptyClient->socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;
+  emptyClient->socketUdpAddress.sin_port = clientUDPAddress.sin_port;
+  emptyClient->status = true;
+
+  char* packetCopy = calloc(1, MAX_PACKET);
+  char* packetCopyBeginning = packetCopy;
+  strcpy(packetCopy, packet);
+
+  const char* middle = packetDelimiters.middle;
+  const char* end = packetDelimiters.end;
+  const int endLength = strlen(end);
+
+  char* type = calloc(1, 20);
+  char* typeBeginning = type;
+  readPacketField(packetCopy, type, middle, debugFlag);
+  //printf("%ld\n", strlen(type));
+  packetCopy += strlen(type) + 1;
+  free(typeBeginning);
+
+  char* username = calloc(1, MAX_USERNAME);
+  char* usernameBeginning = username;
+  readPacketField(packetCopy, username, middle, debugFlag);
+  //printf("%s\n", username);
+  strcpy(emptyClient->username, username);
+  packetCopy += strlen(username) + 1;
+
+  char* resources = calloc(1, MAX_DATA);
+  char* resourcesBeginning = resources;
+
+  while (checkEnd(packetCopy) == false) {
+    readPacketField(packetCopy, resources, middle, debugFlag);
+//    strcat(emptyClient->availableResources, resources);
+//    strcat(emptyClient->availableResources, middle);
+    headResource = addResource(headResource, username, resources);
+    //printf("username: %s\n", headResource->username);
+    //printf("filename: %s\n", headResource->filename);
+    packetCopy += strlen(resources) + 1;
+    memset(resources, 0, strlen(resources));
   }
+  //printf("username: %s\n", headResource->username);
+  //printf("filename: %s\n", headResource->filename);
 
-  // Find an empty connection client and fill it out with the info from the connection packet
-  int emptyConnectedClientIndex = findEmptyConnectedClient(debugFlag);
-  strcpy(connectedClients[emptyConnectedClientIndex].username, connectionPacketFields.username);                      // username
-  connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_addr.s_addr = clientUDPAddress.sin_addr.s_addr;    // UDP address
-  connectedClients[emptyConnectedClientIndex].socketUdpAddress.sin_port = clientUDPAddress.sin_port;                  // UDP port
-  strcpy(connectedClients[emptyConnectedClientIndex].availableResources, connectionPacketFields.availableResources);  // Available resources
-
+  free(usernameBeginning);
+  free(resourcesBeginning);
+  free(packetCopyBeginning);
   if (debugFlag) {
     printAllConnectedClients();
   }
   return 0;
 }
-
 
 /*
   * Purpose: When the server receives a status packet, this function handles the data
@@ -289,26 +329,29 @@ int handleStatusPacket(struct sockaddr_in clientUdpAddress) {
   int clientIndex;
   struct ConnectedClient* currentClient;
 
-  for (clientIndex = 0; clientIndex < MAX_CONNECTED_CLIENTS; clientIndex++) {                             // Loop through all clients
+  for (clientIndex = 0; clientIndex < MAX_CONNECTED_CLIENTS; clientIndex++) {
     currentClient = &connectedClients[clientIndex];
 
-    unsigned long currentClientAddress = connectedClients[clientIndex].socketUdpAddress.sin_addr.s_addr;  // Client's IP address
-    unsigned short currentClientPort = connectedClients[clientIndex].socketUdpAddress.sin_port;           // Client's port
+    // Client
+    unsigned long currentClientAddress = connectedClients[clientIndex].socketUdpAddress.sin_addr.s_addr;
+    unsigned short currentClientPort = connectedClients[clientIndex].socketUdpAddress.sin_port;
 
-    unsigned long incomingAddress = clientUdpAddress.sin_addr.s_addr;                                     // IP address of packet sender
-    unsigned short incomingPort = clientUdpAddress.sin_port;                                              // Port of packet sender
+    // Packet sender
+    unsigned long incomingAddress = clientUdpAddress.sin_addr.s_addr;
+    unsigned short incomingPort = clientUdpAddress.sin_port;
 
-    if (currentClientAddress == 0 && currentClientPort == 0) {                                            // Empty client
+    if (currentClientAddress == 0 && currentClientPort == 0) {
       continue;
     }
 
-    if (currentClientAddress == incomingAddress && currentClientPort == incomingPort) {                   // Client matches packet sender
-      currentClient->status = 1;                                                                          // Packet sender is client. They sent a response and are still connected
+    if (currentClientAddress == incomingAddress && currentClientPort == incomingPort) {
+      currentClient->status = 1;    // Packet sender is client. They sent a response and are still connected
     }
   }
   return 0;
 }
 
+/*
 int handleResourcePacket(struct sockaddr_in clientUdpAddress) {
   int clientIndex = 0;
   struct ConnectedClient* currentClient;
@@ -319,3 +362,4 @@ int handleResourcePacket(struct sockaddr_in clientUdpAddress) {
 
   return 0;
 }
+*/

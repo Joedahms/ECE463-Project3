@@ -28,9 +28,7 @@ char* buffer;
 
 // Packet delimiters that are constant for all packets
 // See packet.h & packet.c
-extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
-extern struct StatusPacketDelimiters statusPacketDelimiters;
-extern struct ResourcePacketDelimiters resourcePacketDelimiters;
+extern struct PacketDelimiters packetDelimiters;
 
 // Main
 int main(int argc, char* argv[]) {
@@ -56,26 +54,11 @@ int main(int argc, char* argv[]) {
   memset(&udpAddress, 0, sizeof(udpAddress));
   udpSocketDescriptor = setupUdpSocket(udpAddress, 0);
 
-  struct ConnectionPacketFields connectionPacketFields;
-  
-  // Get available resources on client and add to connection packet
-  char* availableResources = calloc(1, RESOURCE_ARRAY_SIZE);
-  if (getAvailableResources(availableResources, "Public") == -1) {
-    exit(1);
+  if (sendConnectionPacket(serverAddress, debugFlag) == -1) {
+    printf("Error sending connection packet\n");
   }
-  strcpy(connectionPacketFields.availableResources, availableResources);
-  free(availableResources);
 
-  // Get username
-  strcpy(connectionPacketFields.username, getenv("USER"));
-
-  // Build and send the connection packet
-  char* connectionPacket = calloc(1, MAX_CONNECTION_PACKET_SIZE);                       // Allocate connection packet string
-  buildConnectionPacket(connectionPacket, connectionPacketFields, debugFlag);       // Build the entire connection packet
-  sendUdpMessage(udpSocketDescriptor, serverAddress, connectionPacket, debugFlag);  // Send connection packet to the server
-  free(connectionPacket);                                                           // Free connection packet
-
-
+  /*
   struct StatusPacketFields statusPacketFields;
   strcpy(statusPacketFields.status, "testing");
   char* statusPacket = calloc(1, MAX_STATUS_PACKET_SIZE);
@@ -83,6 +66,7 @@ int main(int argc, char* argv[]) {
   sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);  // Send connection packet to the server
   free(statusPacket);                                                           // Free connection packet
 
+*/
 
   fd_set read_fds;
 
@@ -105,12 +89,14 @@ int main(int argc, char* argv[]) {
       getUserInput(userInput);
 
       if (strcmp(userInput, "test") == 0) {
+        /*
         struct ResourcePacketFields resourcePacketFields;
         strcpy(resourcePacketFields.test, "testing");
         char* resourcePacket = calloc(1, MAX_RESOURCE_PACKET_SIZE);
         buildResourcePacket(resourcePacket, resourcePacketFields, debugFlag);               // Build the entire connection packet
         sendUdpMessage(udpSocketDescriptor, serverAddress, resourcePacket, debugFlag);  // Send connection packet to the server
         free(resourcePacket);
+        */
       }
 
       // User just pressed return
@@ -123,10 +109,13 @@ int main(int argc, char* argv[]) {
       int packetType = getPacketType(buffer);
 
       // Assume that it is a status packet
-      struct StatusPacketFields statusPacketFields;
-      strcpy(statusPacketFields.status, "testing");
-      char* statusPacket = calloc(1, MAX_STATUS_PACKET_SIZE);
-      buildStatusPacket(statusPacket, statusPacketFields, debugFlag);
+      struct PacketFields packetFields;
+      memset(&packetFields, 0, sizeof(packetFields));
+      strcpy(packetFields.type, "status");
+      strcat(packetFields.data, "testing");
+      strcat(packetFields.data, "$");
+      char* statusPacket = calloc(1, MAX_PACKET);
+      buildPacket(statusPacket, packetFields, debugFlag);
       sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);
       free(statusPacket);
     }
@@ -184,7 +173,6 @@ void receiveMessageFromServer() {
 
 
 /*
-  * Name: getAvailableResources
   * Purpose: Get the available resources on the client and add them to the available
   * resources string.
   * Input: 
@@ -195,14 +183,14 @@ void receiveMessageFromServer() {
   * - 0: Success
 */
 int getAvailableResources(char* availableResources, const char* directoryName) {
-  DIR* directoryStream = opendir(directoryName);                      // Open resource directory
-  if (directoryStream == NULL) {                                      // Error opening the directory
+  DIR* directoryStream = opendir(directoryName);
+  if (directoryStream == NULL) {
     return -1;
     perror("Error opening resource directory");
   }
-  struct dirent* directoryEntry;                                      // dirent structure for the entries in the resource directory
+  struct dirent* directoryEntry;
   while((directoryEntry = readdir(directoryStream)) != NULL) {        // Loop through the entire resource directory
-    const char* entryName = directoryEntry->d_name;                   // Get the name of the entry
+    const char* entryName = directoryEntry->d_name;
     if (strcmp(entryName, ".") == 0) {                                // Ignore current directory
       continue;
     }
@@ -210,7 +198,30 @@ int getAvailableResources(char* availableResources, const char* directoryName) {
       continue;
     }
     strcat(availableResources, directoryEntry->d_name);               // Add the entry name to the available resources
-    strcat(availableResources, connectionPacketDelimiters.resource);  // Add the resource delimiter to show end of resource
+    strcat(availableResources, packetDelimiters.middle);
   } 
   return 0;
 }
+
+// Polish memory management
+int sendConnectionPacket(struct sockaddr_in serverAddress, bool debugFlag) {
+  struct PacketFields packetFields; 
+  strcpy(packetFields.type, "connection");
+
+  strcpy(packetFields.data, getenv("USER"));
+  strncat(packetFields.data, packetDelimiters.middle, packetDelimiters.middleLength);
+
+  char* availableResources = calloc(1, MAX_DATA);
+  if (getAvailableResources(availableResources, "Public") == -1) {
+    return -1;
+  }
+  strcat(packetFields.data, availableResources);
+  free(availableResources);
+
+  char* packet = calloc(1, MAX_PACKET);
+  buildPacket(packet, packetFields, debugFlag);
+  sendUdpMessage(udpSocketDescriptor, serverAddress, packet, debugFlag);
+
+  return 0;
+}
+

@@ -10,7 +10,6 @@
 #define MAX_PACKET 220
 #define MAX_PACKET_TYPE 20
 #define NUM_PACKET_TYPES 3
-#define MAX_DATA 200
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -19,26 +18,21 @@
 
 #include "network_node.h"
 
-static const char* packetTypes[NUM_PACKET_TYPES] = {"connection", "status", "resource"};
+static const char* types[NUM_PACKET_TYPES] = {"test1", "test2", "test3"};
 
 struct PacketDelimiters {
-  int middleLength;
-  char middle[1];
-  int endLength;
-  char end[9];
+  char middle[20];
+  char end[20];
 };
 
 struct PacketFields {
   char type[MAX_PACKET_TYPE];
-  char data[MAX_DATA];
+  char data[200];
 };
 
 int getPacketType(const char*);
-void buildPacket(char*, struct PacketFields, bool);
-int readPacket(char*, struct PacketFields*);
-
-bool checkEnd(char*);
-void readPacketField(char*, char*, const char*, bool);
+void buildPacket(char*, struct packetFields, bool);
+int readPacket(char*, struct packetFields*);
 
 /*
 // Delimiters in a connection packet. The same in every connection packet
