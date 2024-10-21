@@ -218,7 +218,6 @@ void printAllConnectedClients() {
   unsigned long udpAddress;
   unsigned short udpPort;
   char* username = calloc(1, MAX_USERNAME);
- // char* availableResources = calloc(1, MAX_RESOURCE_ARRAY);
 
   int i;
   for (i = 0; i < MAX_CONNECTED_CLIENTS; i++) {
@@ -229,23 +228,25 @@ void printAllConnectedClients() {
       continue;
     }
     strcpy(username, connectedClients[i].username);
-//    strcpy(availableResources, connectedClients[i].availableResources);
     printf("CONNECTED CLIENT %d\n", i);
     printf("USERNAME: %s\n", username);
     memset(username, 0, MAX_USERNAME);
     printf("UDP ADDRESS: %ld\n", udpAddress);
     printf("UDP PORT: %d\n", udpPort);
-    printf("AVAILABLE RESOURCES:\n");
-    struct Resource* currentResource = headResource;
-    while (currentResource) {
-      printf("USERNAME: %s\n", currentResource->username);
-      printf("FILENAME: %s\n", currentResource->filename);
-      currentResource = currentResource->next;
-    }
-//    memset(availableResources, 0, MAX_RESOURCE_ARRAY);
   }
   free(username);
-//  free(availableResources);
+  printf("\n");
+}
+
+void printAllResources() {
+  printf("\n*** PRINTING ALL RESOURCES***\n");
+  struct Resource* currentResource = headResource;
+  while (currentResource) {
+    printf("USERNAME: %s\n", currentResource->username);
+    printf("FILENAME: %s\n", currentResource->filename);
+    currentResource = currentResource->next;
+  }
+  printf("\n");
 }
 
 
@@ -295,22 +296,17 @@ int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress, bo
 
   while (checkEnd(packetCopy) == false) {
     readPacketField(packetCopy, resources, middle, debugFlag);
-//    strcat(emptyClient->availableResources, resources);
-//    strcat(emptyClient->availableResources, middle);
     headResource = addResource(headResource, username, resources);
-    //printf("username: %s\n", headResource->username);
-    //printf("filename: %s\n", headResource->filename);
     packetCopy += strlen(resources) + 1;
     memset(resources, 0, strlen(resources));
   }
-  //printf("username: %s\n", headResource->username);
-  //printf("filename: %s\n", headResource->filename);
 
   free(usernameBeginning);
   free(resourcesBeginning);
   free(packetCopyBeginning);
   if (debugFlag) {
     printAllConnectedClients();
+    printAllResources();
   }
   return 0;
 }

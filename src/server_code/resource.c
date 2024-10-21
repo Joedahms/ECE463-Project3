@@ -21,7 +21,4 @@ struct Resource* addResource(struct Resource* headResource, char* username, char
   currentResource->next = headResource;
   headResource = currentResource;
   return headResource;
-//  printf("username: %s\n", headResource->username);
- // printf("filename: %s\n", headResource->filename);
-
 }
