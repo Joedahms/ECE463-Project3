@@ -16,7 +16,6 @@
 #include "server.h"
 #include "resource.h"
 
-bool debugFlag = false;            // Can add conditional statements with this flag to print out extra info
 
 // Global so that signal handler can free resources
 int listeningUDPSocketDescriptor;
@@ -31,6 +30,8 @@ extern struct PacketDelimiters packetDelimiters;
 int main(int argc, char* argv[]) {
   // Assign callback function for Ctrl-c
   signal(SIGINT, shutdownServer);
+
+  bool debugFlag = false; // Can add conditional statements with this flag to print out extra info
 
   // Make sure all connectedClients are set to 0
   int i; 
@@ -60,7 +61,7 @@ int main(int argc, char* argv[]) {
   int packetType = 0;
 
   pthread_t processId;
-  pthread_create(&processId, NULL, checkClientStatus, NULL);
+  pthread_create(&processId, NULL, checkClientStatus, &debugFlag);
 
   // Continously listen for new UDP packets and new TCP connections
   while (1) {
@@ -70,17 +71,17 @@ int main(int argc, char* argv[]) {
     if (!packetAvailable) {
       continue;
     }
+
     packetType = getPacketType(packet);
-    
     switch(packetType) {
-      case 0:                                                               // Connection packet
+      case 0:            // Connection packet
       if (debugFlag) {
         printf("Connection packet received\n");
       }
       int connectionPacketReturn = handleConnectionPacket(packet, clientUDPAddress, debugFlag);
       break;
 
-      case 1:                                                               // Status packet
+      case 1:           // Status packet
       if (debugFlag) {
         printf("Status packet received\n");
       }
@@ -116,7 +117,9 @@ int main(int argc, char* argv[]) {
   * Notes: This function is run in a thread spawned from the main process. It is alive for the entire
   * duration of the main process. It only exits when the server shuts down.
 */
-void* checkClientStatus() {
+void* checkClientStatus(void* input) {
+  bool debugFlag = *((bool*)input); // Have to cast then dereference the input to use it
+
   struct PacketFields packetFields;
   strcpy(packetFields.type, "status");
   strcat(packetFields.data, "testing");
@@ -165,7 +168,6 @@ void* checkClientStatus() {
   free(statusPacket);
 }
 
-
 /*
 * Purpose: Gracefully shutdown the server when the user enters
 * ctrl-c. Closes the sockets and frees addrinfo data structure
@@ -178,7 +180,6 @@ void shutdownServer(int signal) {
   printf("\n");
   exit(0);
 }
-
 
 /*
   * Purpose: Loop through the connectedClients array until an empty spot is found. Looks for unset
@@ -206,7 +207,6 @@ int findEmptyConnectedClient(bool debugFlag) {
   }
   return -1;                                // All spots filled
 }
-
 
 /*
   * Purpose: Print all the connected clients in a readable format
@@ -238,6 +238,13 @@ void printAllConnectedClients() {
   printf("\n");
 }
 
+/*
+  * Purpose: Print out all available resources. Print all the fields of the resource type. Traverses
+  * the linked list that the available resources are stored in.
+  * Input:
+  * - None
+  * Output: None
+*/
 void printAllResources() {
   printf("\n*** PRINTING ALL RESOURCES***\n");
   struct Resource* currentResource = headResource;
@@ -248,7 +255,6 @@ void printAllResources() {
   }
   printf("\n");
 }
-
 
 /*
   * Purpose: When the server receives a connection packet, this function handles the data
@@ -277,38 +283,48 @@ int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress, bo
   const char* end = packetDelimiters.end;
   const int endLength = strlen(end);
 
-  char* type = calloc(1, 20);
-  char* typeBeginning = type;
-  readPacketField(packetCopy, type, middle, debugFlag);
-  //printf("%ld\n", strlen(type));
-  packetCopy += strlen(type) + 1;
-  free(typeBeginning);
+  // Don't care about type field
+  packetCopy = skipPacketField(packetCopy, middle, debugFlag);  
 
+  // Username
   char* username = calloc(1, MAX_USERNAME);
   char* usernameBeginning = username;
   readPacketField(packetCopy, username, middle, debugFlag);
-  //printf("%s\n", username);
   strcpy(emptyClient->username, username);
   packetCopy += strlen(username) + 1;
 
-  char* resources = calloc(1, MAX_DATA);
-  char* resourcesBeginning = resources;
-
-  while (checkEnd(packetCopy) == false) {
-    readPacketField(packetCopy, resources, middle, debugFlag);
-    headResource = addResource(headResource, username, resources);
-    packetCopy += strlen(resources) + 1;
-    memset(resources, 0, strlen(resources));
-  }
+  addResourcesToDirectory(packetCopy, username, middle, debugFlag);
 
   free(usernameBeginning);
-  free(resourcesBeginning);
   free(packetCopyBeginning);
+
   if (debugFlag) {
     printAllConnectedClients();
     printAllResources();
   }
   return 0;
+}
+
+/*
+  * Purpose: Traverse the data field in a packet and add the resources in the data field
+  * to the resource directory
+  * Input: 
+  * - Packet containing the available resources. Packet is assumed to point at the beginning of the data field
+  * - Username of the client who sent the packet
+  * - Delimiter marking the end of each resource
+  * - Debug flag
+  * Output: None
+*/
+void addResourcesToDirectory(char* packet, char* username, const char* fieldDelimiter, bool debugFlag) {
+  char* resources = calloc(1, MAX_DATA);
+  char* resourcesBeginning = resources;
+  while (checkEnd(packet) == false) {
+    readPacketField(packet, resources, fieldDelimiter, debugFlag);
+    headResource = addResource(headResource, username, resources);
+    packet += strlen(resources) + 1;
+    memset(resources, 0, strlen(resources));
+  }
+  free(resourcesBeginning);
 }
 
 /*

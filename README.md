@@ -9,14 +9,13 @@ Flowcharts: Directory containing flowcharts that illustrate the logical flow of 
 The flowcharts were made and can be modified with [draw.io](https://app.diagrams.net/).
 
 ## Usage (May be different for this phase)
-$ %put <file name>
-Send a file to the server.
-
-$ %get <file name>
-Request a file stored on the remote server.
-
-$ <any plain text message>
-Will transmit message to any other clients connected to the server.
+Both client and server support the use of the -d flag for debugging purposes. If used, it will
+print extra information about the operation of the program to stdout.
+### Server
+After compilation, change to the server_test_directory and run the server executable.
+### Client
+After compilation, change to the client_test_directory and run the client executable. Any files that you want
+to make available for file sharing should be put in the Public folder.
 
 ## Compilation
 This project uses make for compilation. Enter "make" to compile the program, "make clean" to remove all object  
@@ -33,7 +32,6 @@ files and executables. Any files/directories that are created when compiling are
 ## Code Style Conventions
 - Types camel case with first character uppercase
 - Variables and functions camel case
-- Double space between functions
 - Single space after commas
 - Single space before and after =
 

@@ -58,25 +58,13 @@ int main(int argc, char* argv[]) {
     printf("Error sending connection packet\n");
   }
 
-  /*
-  struct StatusPacketFields statusPacketFields;
-  strcpy(statusPacketFields.status, "testing");
-  char* statusPacket = calloc(1, MAX_STATUS_PACKET_SIZE);
-  buildStatusPacket(statusPacket, statusPacketFields, debugFlag);       // Build the entire connection packet
-  sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);  // Send connection packet to the server
-  free(statusPacket);                                                           // Free connection packet
-
-*/
-
   fd_set read_fds;
-
   buffer = calloc(1, 1000);
 
-  // Constantly check user input
   while(1) {
     // Use select to handle user input and server messages simultaneously
     FD_ZERO(&read_fds);
-    FD_SET(0, &read_fds);  // 0 is stdin (for user input)
+    FD_SET(0, &read_fds); // 0 is stdin (for user input)
     FD_SET(udpSocketDescriptor, &read_fds);  // The socket for receiving server messages
 
     int activity = select(udpSocketDescriptor + 1, &read_fds, NULL, NULL, NULL);
@@ -203,7 +191,15 @@ int getAvailableResources(char* availableResources, const char* directoryName) {
   return 0;
 }
 
-// Polish memory management
+/*
+  * Purpose: Send a connection packet to the specified server
+  * Input: 
+  * - Socket address structure of the server to send the connection packet to
+  * - Debug flag
+  * Output:
+  * -1: Error constructing or sending the connection packet, the packet was not sent
+  * 0: Packet successfully sent
+*/
 int sendConnectionPacket(struct sockaddr_in serverAddress, bool debugFlag) {
   struct PacketFields packetFields; 
   strcpy(packetFields.type, "connection");
@@ -221,6 +217,7 @@ int sendConnectionPacket(struct sockaddr_in serverAddress, bool debugFlag) {
   char* packet = calloc(1, MAX_PACKET);
   buildPacket(packet, packetFields, debugFlag);
   sendUdpMessage(udpSocketDescriptor, serverAddress, packet, debugFlag);
+  free(packet);
 
   return 0;
 }

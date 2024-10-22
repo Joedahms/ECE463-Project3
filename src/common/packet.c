@@ -7,6 +7,7 @@
 
 #include "packet.h"
 
+// Strings designating certain points in the packet
 struct PacketDelimiters packetDelimiters = {
   1,
   "$",        // middle
@@ -14,6 +15,17 @@ struct PacketDelimiters packetDelimiters = {
   "endpacket" // end
 };
 
+/*
+  * Purpose: Get the type of a packet based on the first field of the packet
+  * Input:
+  * - The packet to get the type of
+  * Output: Integer representing the type of the packet
+  * -1 = invalid
+  * 0 = connection
+  * 1 = status
+  * 2 = resource
+  * Notes: Might look at using an enum for packet type
+*/
 int getPacketType(const char* packet) {
   char* packetCopy = calloc(1, MAX_PACKET);
   char* packetCopyStart = packetCopy;
@@ -26,10 +38,6 @@ int getPacketType(const char* packet) {
     packetCopy++;
   }
 
-  // -1 = invalid
-  // 0 = connection
-  // 1 = status
-  // 2 = resource
   int returnVal = -1;
   int i = 0;
   for (i = 0; i < NUM_PACKET_TYPES; i++) {
@@ -53,19 +61,20 @@ int getPacketType(const char* packet) {
   * Output: None
 */
 void buildPacket(char* builtPacket, struct PacketFields packetFields, bool debugFlag) {
-  // Add type and middle delimiter
+  // Type and a middle
   strcpy(builtPacket, packetFields.type);
   strncat(builtPacket, packetDelimiters.middle, packetDelimiters.middleLength);
   if (debugFlag) {
     printf("Packet after adding beginning and a middle: %s\n", builtPacket);
   }
 
+  // Data
   strcat(builtPacket, packetFields.data);
   if (debugFlag) {
     printf("Packet after adding data and a middle: %s\n", builtPacket);
   }
 
-  // Add end delimiter
+  // End
   strncat(builtPacket, packetDelimiters.end, packetDelimiters.endLength);
   if (debugFlag) {
     printf("Entire packet: %s\n", builtPacket);
@@ -108,11 +117,17 @@ int readPacket(char* packetToBeRead, struct PacketFields* packetFields) {
       atEnd = true;
     }
   }
-
   return 0;
 }
 
-
+/*
+  * Purpose: Check if at the end of the data field of a packet
+  * Input: 
+  * - The packet
+  * Output:
+  * 0: Not at the end of data
+  * 1: At the end of data
+*/
 bool checkEnd(char* packet) {
   if (strncmp(packet, packetDelimiters.end, packetDelimiters.endLength) == 0) {
     return true;
@@ -120,7 +135,16 @@ bool checkEnd(char* packet) {
   return false;
 }
 
-
+/*
+  * Purpose: Read a single field from a packet. Reads the packet string until the field
+  * delimiter is hit.
+  * Input: 
+  * - The packet to read the field from
+  * - String to return the field in
+  * - Delimiter marking the end of the field
+  * - Debug flag
+  * Output: None
+*/
 void readPacketField(char* packet, char* field, const char* fieldDelimiter, bool debugFlag) {
   if (debugFlag) {
     printf("Reading field from packet: %s\n", packet);     
@@ -142,188 +166,17 @@ void readPacketField(char* packet, char* field, const char* fieldDelimiter, bool
 }
 
 /*
-  * Name: buildConnectionPacket
-  * Purpose: Using a passed in struct containing the fields of a connection packet, build a connection
-  * packet in the form of a string.
+  * Purpose: Skip a field in a packet. Advances the packet pointer past the current field
   * Input: 
-  * - String where the completed packet is to go
-  * - struct containing the information the packet is to contain
+  * - Packet to skip a field in
+  * - Delimiter marking the end of the field to skip
   * - Debug flag
-  * Output: None
+  * Output: Packet with one less field
 */
-/*
-void buildConnectionPacket(char* builtPacket, struct ConnectionPacketFields connectionPacketFields, bool debugFlag) {
-  // Add beginning and middle delimiter
-  strncat(builtPacket, connectionPacketDelimiters.beginning, strlen(connectionPacketDelimiters.beginning));
-  strcat(builtPacket, connectionPacketDelimiters.middle);
-  if (debugFlag) {
-    printf("Connection packet after adding beginning and a middle: %s\n", builtPacket);
-  }
-
-  // Add username and a middle delimiter
-  strcat(builtPacket, connectionPacketFields.username);                                           // Add username field to packet
-  strcat(builtPacket, connectionPacketDelimiters.middle);
-  if (debugFlag) {
-    printf("Connection packet after adding username and a middle: %s\n", builtPacket);
-  }
-
-  // Add available resources and middle delimiter
-  strcat(builtPacket, connectionPacketFields.availableResources);
-  strcat(builtPacket, connectionPacketDelimiters.middle);
-  if (debugFlag) {
-    printf("Connection packet after adding availableResources and a middle: %s\n", builtPacket);
-  }
-
-  // Add end delimiter and if the debug flag is set, print out the whole packet
-  strcat(builtPacket, connectionPacketDelimiters.end);
-  if (debugFlag) {
-    printf("Entire connection packet: %s\n", builtPacket);
-  }
+char* skipPacketField(char* packet, const char* fieldDelimiter, bool debugFlag) {
+  char* dummyField = calloc(1, 50);
+  readPacketField(packet, dummyField, fieldDelimiter, debugFlag);
+  packet += strlen(dummyField) + 1;
+  free(dummyField);
+  return packet;
 }
-*/
-
-
-/*
-  * Name: readConnectionPacket
-  * Purpose: Read a connection packet that has been sent
-  * Input:
-  * - String containing the packet that was sent
-  * - Struct to put the read out fields into
-  * Output:
-  * - -1: Packet invalid. Error could be on client's end or in transmission.
-  * - 0: Valid packet.
-*/
-/*
-int readConnectionPacket(char* packetToBeRead, struct ConnectionPacketFields* readPacketFields) {
-  // Delimiters
-  const char* beginning = connectionPacketDelimiters.beginning;
-  const char* middle = connectionPacketDelimiters.middle;
-  const char* resource = connectionPacketDelimiters.resource;
-  const char* end = connectionPacketDelimiters.end;
-
-  // Beginning
-  if (strncmp(packetToBeRead, beginning, strlen(beginning)) != 0) {     // Check if the beginning of the packet is correct
-    return -1;
-  }
-  packetToBeRead += strlen(beginning);                                  // Advance past the beginning
-  if (strncmp(packetToBeRead, "$", 1) != 0) {                           // Make sure there is a middle delimiter after the beginning
-    return -1;
-  }
-  packetToBeRead++;                                                     // Past middle delimiter
-
-  // Username
-  while (strncmp(packetToBeRead, middle, 1) != 0) {                     // While not at the end of username
-    strncat(readPacketFields->username, packetToBeRead, 1); 
-    packetToBeRead++;
-  }
-  packetToBeRead++; // Past middle delimiter
-
-  // Available resources
-  while (strncmp(packetToBeRead, middle, 1) != 0) {                     // While not at the end of available resources
-    strncat(readPacketFields->availableResources, packetToBeRead, 1);
-    packetToBeRead++;
-  }
-  packetToBeRead++; // Past middle delimiter
-
-  return 0;
-}
-*/
-
-/*
-void buildStatusPacket(char* builtPacket, struct StatusPacketFields statusPacketFields, bool debugFlag) {
-  // Add beginning and middle delimiter
-  strncat(builtPacket, statusPacketDelimiters.beginning, strlen(statusPacketDelimiters.beginning));
-  strcat(builtPacket, statusPacketDelimiters.middle);
-  if (debugFlag) {
-    printf("Status packet after adding beginning and a middle: %s\n", builtPacket);
-  }
-
-  // Add status and a middle delimiter
-  strcat(builtPacket, statusPacketFields.status);
-  strcat(builtPacket, statusPacketDelimiters.middle);
-  if (debugFlag) {
-    printf("Status packet after adding status and a middle: %s\n", builtPacket);
-  }
-
-  // Add end delimiter and if the debug flag is set, print out the whole packet
-  strcat(builtPacket, statusPacketDelimiters.end);
-  if (debugFlag) {
-    printf("Entire status packet: %s\n", builtPacket);
-  }
-}
-*/
-/*
-int readStatusPacket(char* packetToBeRead, struct StatusPacketFields* statusPacketFields) {
-  // Delimiters
-  const char* beginning = statusPacketDelimiters.beginning;
-  const char* middle = statusPacketDelimiters.middle;
-  const char* end = statusPacketDelimiters.end;
-
-  // Beginning
-  if (strncmp(packetToBeRead, beginning, strlen(beginning)) != 0) {     // Check if the beginning of the packet is correct
-    return -1;
-  }
-  packetToBeRead += strlen(beginning);                                  // Advance past the beginning
-  if (strncmp(packetToBeRead, "$", 1) != 0) {                           // Make sure there is a middle delimiter after the beginning
-    return -1;
-  }
-  packetToBeRead++;                                                     // Past middle delimiter
-
-  // Status
-  while (strncmp(packetToBeRead, middle, 1) != 0) {                     // While not at the end of status
-    strncat(statusPacketFields->status, packetToBeRead, 1); 
-    packetToBeRead++;
-  }
-  packetToBeRead++; // Past middle delimiter
-
-  return 0;
-}
-
-void buildResourcePacket(char* builtPacket, struct ResourcePacketFields resourcePacketFields, bool debugFlag) {
-  // Add beginning and middle delimiter
-  strncat(builtPacket, resourcePacketDelimiters.beginning, strlen(resourcePacketDelimiters.beginning));
-  strcat(builtPacket, resourcePacketDelimiters.middle);
-  if (debugFlag) {
-    printf("Resource packet after adding beginning and a middle: %s\n", builtPacket);
-  }
-
-  // Add status and a middle delimiter
-  strcat(builtPacket, resourcePacketFields.test);
-  strcat(builtPacket, resourcePacketDelimiters.middle);
-  if (debugFlag) {
-    printf("Resource packet after adding status and a middle: %s\n", builtPacket);
-  }
-
-  // Add end delimiter and if the debug flag is set, print out the whole packet
-  strcat(builtPacket, resourcePacketDelimiters.end);
-  if (debugFlag) {
-    printf("Entire resource packet: %s\n", builtPacket);
-  }
-}
-
-int readResourcePacket(char* packetToBeRead, struct ResourcePacketFields* resourcePacketFields) {
-  // Delimiters
-  const char* beginning = resourcePacketDelimiters.beginning;
-  const char* middle = resourcePacketDelimiters.middle;
-  const char* end = resourcePacketDelimiters.end;
-
-  // Beginning
-  if (strncmp(packetToBeRead, beginning, strlen(beginning)) != 0) {     // Check if the beginning of the packet is correct
-    return -1;
-  }
-  packetToBeRead += strlen(beginning);                                  // Advance past the beginning
-  if (strncmp(packetToBeRead, "$", 1) != 0) {                           // Make sure there is a middle delimiter after the beginning
-    return -1;
-  }
-  packetToBeRead++;                                                     // Past middle delimiter
-
-  // Test
-  while (strncmp(packetToBeRead, middle, 1) != 0) {                     // While not at the end of status
-    strncat(resourcePacketFields->test, packetToBeRead, 1); 
-    packetToBeRead++;
-  }
-  packetToBeRead++; // Past middle delimiter
-
-  return 0;
-}
-*/
