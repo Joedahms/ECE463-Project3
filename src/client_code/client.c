@@ -12,23 +12,23 @@
 #include <signal.h>
 #include <errno.h>
 #include <dirent.h>
+#include <stdbool.h>
 
 #include "../common/network_node.h"
 #include "../common/packet.h"
 #include "client.h"
 
 // Global flags
-uint8_t debugFlag = 0;  // Can add conditional statements with this flag to print out extra info
+bool debugFlag = false;  // Can add conditional statements with this flag to print out extra info
 
 // Global variables (for signal handler)
 int udpSocketDescriptor;
 char* userInput;
 char* buffer;
 
-// Connection packet delimiters that are constant for all connection packets
+// Packet delimiters that are constant for all packets
 // See packet.h & packet.c
-extern struct ConnectionPacketDelimiters connectionPacketDelimiters;
-extern struct StatusPacketDelimiters statusPacketDelimiters;
+extern struct PacketDelimiters packetDelimiters;
 
 // Main
 int main(int argc, char* argv[]) {
@@ -50,47 +50,21 @@ int main(int argc, char* argv[]) {
   checkCommandLineArguments(argc, argv, &debugFlag);
  
   // Setup UDP socket
-  struct sockaddr_in udpAddress;                                                    // Will leave empty because do not need to bind
-  memset(&udpAddress, 0, sizeof(udpAddress));                                       // 0 out
-  udpSocketDescriptor = setupUdpSocket(udpAddress, 0);                              // Setup udp socket without binding
+  struct sockaddr_in udpAddress;
+  memset(&udpAddress, 0, sizeof(udpAddress));
+  udpSocketDescriptor = setupUdpSocket(udpAddress, 0);
 
-  struct ConnectionPacketFields connectionPacketFields;                             // Struct to store the fields to send
-  
-  // Get available resources on client and add to connection packet
-  char* availableResources = calloc(1, RESOURCE_ARRAY_SIZE);                        // Allocate space for the string of available resources
-  if (getAvailableResources(availableResources, "Public") == -1) {
-    exit(1);
+  if (sendConnectionPacket(serverAddress, debugFlag) == -1) {
+    printf("Error sending connection packet\n");
   }
-  strcpy(connectionPacketFields.availableResources, availableResources);            // Add the resource string to the connection packet
-  free(availableResources);                                                         // Free available resources string
-
-  // Get username
-  strcpy(connectionPacketFields.username, getenv("USER"));                          // Set the username by using the USER environment variable
-
-  // Build and send the connection packet
-  char* connectionPacket = calloc(1, CONNECTION_PACKET_SIZE);                       // Allocate connection packet string
-  buildConnectionPacket(connectionPacket, connectionPacketFields, debugFlag);       // Build the entire connection packet
-  sendUdpMessage(udpSocketDescriptor, serverAddress, connectionPacket, debugFlag);  // Send connection packet to the server
-  free(connectionPacket);                                                           // Free connection packet
-
-
-  struct StatusPacketFields statusPacketFields;
-  strcpy(statusPacketFields.status, "testing");
-  char* statusPacket = calloc(1, STATUS_PACKET_SIZE);
-  buildStatusPacket(statusPacket, statusPacketFields, debugFlag);       // Build the entire connection packet
-  sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);  // Send connection packet to the server
-  free(statusPacket);                                                           // Free connection packet
-
 
   fd_set read_fds;
-
   buffer = calloc(1, 1000);
 
-  // Constantly check user input
   while(1) {
     // Use select to handle user input and server messages simultaneously
     FD_ZERO(&read_fds);
-    FD_SET(0, &read_fds);  // 0 is stdin (for user input)
+    FD_SET(0, &read_fds); // 0 is stdin (for user input)
     FD_SET(udpSocketDescriptor, &read_fds);  // The socket for receiving server messages
 
     int activity = select(udpSocketDescriptor + 1, &read_fds, NULL, NULL, NULL);
@@ -100,8 +74,18 @@ int main(int argc, char* argv[]) {
     }
 
     if (FD_ISSET(0, &read_fds)) {
-      // Get user input and store in userInput buffer
       getUserInput(userInput);
+
+      if (strcmp(userInput, "test") == 0) {
+        /*
+        struct ResourcePacketFields resourcePacketFields;
+        strcpy(resourcePacketFields.test, "testing");
+        char* resourcePacket = calloc(1, MAX_RESOURCE_PACKET_SIZE);
+        buildResourcePacket(resourcePacket, resourcePacketFields, debugFlag);               // Build the entire connection packet
+        sendUdpMessage(udpSocketDescriptor, serverAddress, resourcePacket, debugFlag);  // Send connection packet to the server
+        free(resourcePacket);
+        */
+      }
 
       // User just pressed return
       if (strlen(userInput) == 0) {  
@@ -113,12 +97,15 @@ int main(int argc, char* argv[]) {
       int packetType = getPacketType(buffer);
 
       // Assume that it is a status packet
-      struct StatusPacketFields statusPacketFields;
-      strcpy(statusPacketFields.status, "testing");
-      char* statusPacket = calloc(1, STATUS_PACKET_SIZE);
-      buildStatusPacket(statusPacket, statusPacketFields, debugFlag);               // Build the entire connection packet
-      sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);  // Send connection packet to the server
-      free(statusPacket);                                                           // Free connection packet
+      struct PacketFields packetFields;
+      memset(&packetFields, 0, sizeof(packetFields));
+      strcpy(packetFields.type, "status");
+      strcat(packetFields.data, "testing");
+      strcat(packetFields.data, "$");
+      char* statusPacket = calloc(1, MAX_PACKET);
+      buildPacket(statusPacket, packetFields, debugFlag);
+      sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);
+      free(statusPacket);
     }
   }
 	return 0;
@@ -174,7 +161,6 @@ void receiveMessageFromServer() {
 
 
 /*
-  * Name: getAvailableResources
   * Purpose: Get the available resources on the client and add them to the available
   * resources string.
   * Input: 
@@ -185,14 +171,14 @@ void receiveMessageFromServer() {
   * - 0: Success
 */
 int getAvailableResources(char* availableResources, const char* directoryName) {
-  DIR* directoryStream = opendir(directoryName);                      // Open resource directory
-  if (directoryStream == NULL) {                                      // Error opening the directory
+  DIR* directoryStream = opendir(directoryName);
+  if (directoryStream == NULL) {
     return -1;
     perror("Error opening resource directory");
   }
-  struct dirent* directoryEntry;                                      // dirent structure for the entries in the resource directory
+  struct dirent* directoryEntry;
   while((directoryEntry = readdir(directoryStream)) != NULL) {        // Loop through the entire resource directory
-    const char* entryName = directoryEntry->d_name;                   // Get the name of the entry
+    const char* entryName = directoryEntry->d_name;
     if (strcmp(entryName, ".") == 0) {                                // Ignore current directory
       continue;
     }
@@ -200,7 +186,39 @@ int getAvailableResources(char* availableResources, const char* directoryName) {
       continue;
     }
     strcat(availableResources, directoryEntry->d_name);               // Add the entry name to the available resources
-    strcat(availableResources, connectionPacketDelimiters.resource);  // Add the resource delimiter to show end of resource
+    strcat(availableResources, packetDelimiters.middle);
   } 
   return 0;
 }
+
+/*
+  * Purpose: Send a connection packet to the specified server
+  * Input: 
+  * - Socket address structure of the server to send the connection packet to
+  * - Debug flag
+  * Output:
+  * -1: Error constructing or sending the connection packet, the packet was not sent
+  * 0: Packet successfully sent
+*/
+int sendConnectionPacket(struct sockaddr_in serverAddress, bool debugFlag) {
+  struct PacketFields packetFields; 
+  strcpy(packetFields.type, "connection");
+
+  strcpy(packetFields.data, getenv("USER"));
+  strncat(packetFields.data, packetDelimiters.middle, packetDelimiters.middleLength);
+
+  char* availableResources = calloc(1, MAX_DATA);
+  if (getAvailableResources(availableResources, "Public") == -1) {
+    return -1;
+  }
+  strcat(packetFields.data, availableResources);
+  free(availableResources);
+
+  char* packet = calloc(1, MAX_PACKET);
+  buildPacket(packet, packetFields, debugFlag);
+  sendUdpMessage(udpSocketDescriptor, serverAddress, packet, debugFlag);
+  free(packet);
+
+  return 0;
+}
+
