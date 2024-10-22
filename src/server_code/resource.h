@@ -12,5 +12,7 @@ struct Resource {
 };
 
 struct Resource* addResource(struct Resource*, char*, char*);
+void printAllResources(struct Resource*);
+char* makeResourceString(char*, struct Resource*, char*);
 
 #endif

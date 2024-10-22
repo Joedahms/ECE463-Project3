@@ -23,8 +23,6 @@ void printAllConnectedClients();
 int handleConnectionPacket(char*, struct sockaddr_in, bool);
 void addResourcesToDirectory(char*, char*, const char*, bool);
 int handleStatusPacket(struct sockaddr_in);
-/*
-int handleResourcePacket(struct sockaddr_in);
-*/
+int handleResourcePacket(struct sockaddr_in, bool);
 
 #endif

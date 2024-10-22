@@ -77,40 +77,47 @@ int main(int argc, char* argv[]) {
       getUserInput(userInput);
 
       if (strcmp(userInput, "test") == 0) {
-        /*
-        struct ResourcePacketFields resourcePacketFields;
-        strcpy(resourcePacketFields.test, "testing");
-        char* resourcePacket = calloc(1, MAX_RESOURCE_PACKET_SIZE);
-        buildResourcePacket(resourcePacket, resourcePacketFields, debugFlag);               // Build the entire connection packet
-        sendUdpMessage(udpSocketDescriptor, serverAddress, resourcePacket, debugFlag);  // Send connection packet to the server
-        free(resourcePacket);
-        */
+        sendResourcePacket(serverAddress, debugFlag);
       }
 
       // User just pressed return
-      if (strlen(userInput) == 0) {  
+      if (strlen(userInput) == 0) {
         continue;
       }
     }
     if (FD_ISSET(udpSocketDescriptor, &read_fds)) { // Message in UDP socket queue
       int bytesReceived = recvfrom(udpSocketDescriptor, buffer, USER_INPUT_BUFFER_LENGTH, 0, NULL, NULL);
-      int packetType = getPacketType(buffer);
 
-      // Assume that it is a status packet
-      struct PacketFields packetFields;
-      memset(&packetFields, 0, sizeof(packetFields));
-      strcpy(packetFields.type, "status");
-      strcat(packetFields.data, "testing");
-      strcat(packetFields.data, "$");
-      char* statusPacket = calloc(1, MAX_PACKET);
-      buildPacket(statusPacket, packetFields, debugFlag);
-      sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);
-      free(statusPacket);
+      int packetType = getPacketType(buffer);
+      switch(packetType) {
+        case 0: // Connection
+        break;
+
+        case 1: // Status
+        struct PacketFields packetFields;
+        memset(&packetFields, 0, sizeof(packetFields));
+        strcpy(packetFields.type, "status");
+        strcat(packetFields.data, "testing");
+        strcat(packetFields.data, "$");
+        char* statusPacket = calloc(1, MAX_PACKET);
+        buildPacket(statusPacket, packetFields, debugFlag);
+        sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);
+        free(statusPacket);
+
+        break;
+
+        case 2: // Resource
+        printf("packet: %s\n", buffer);
+
+        break;
+
+        default:
+      }
+
     }
   }
 	return 0;
 } 
-
 
 /*
  * Name: shutdownClient
@@ -126,7 +133,6 @@ void shutdownClient(int signal) {
   exit(0);
 }
 
-
 /*
   * Name: getUserInput
   * Purpose: Get user input from standard in and remove the newline
@@ -137,7 +143,6 @@ void getUserInput(char* userInput) {
   fgets(userInput, USER_INPUT_BUFFER_LENGTH, stdin);  // Get the input
   userInput[strcspn(userInput, "\n")] = 0;            // Remove \n
 }
-
 
 /*
   * Name: receiveMessageFromServer
@@ -158,7 +163,6 @@ void receiveMessageFromServer() {
         perror("Error receiving message from server");
     }
 }
-
 
 /*
   * Purpose: Get the available resources on the client and add them to the available
@@ -222,3 +226,11 @@ int sendConnectionPacket(struct sockaddr_in serverAddress, bool debugFlag) {
   return 0;
 }
 
+void sendResourcePacket(struct sockaddr_in serverAddress, bool debugFlag) {
+  struct PacketFields packetFields;
+  strcpy(packetFields.type, "resource");
+  char* packet = calloc(1, MAX_PACKET);
+  buildPacket(packet, packetFields, debugFlag);
+  sendUdpMessage(udpSocketDescriptor, serverAddress, packet, debugFlag);
+  free(packet);
+}
