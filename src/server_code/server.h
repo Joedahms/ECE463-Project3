@@ -19,12 +19,11 @@ void* checkClientStatus(void*);
 void shutdownServer(int);
 int findEmptyConnectedClient(bool);
 void printAllConnectedClients();
-
-int handleConnectionPacket(char*, struct sockaddr_in, bool);
 void addResourcesToDirectory(char*, char*, const char*, bool);
+
+// Packet handling
+int handleConnectionPacket(char*, struct sockaddr_in, bool);
 int handleStatusPacket(struct sockaddr_in);
-/*
-int handleResourcePacket(struct sockaddr_in);
-*/
+int handleResourcePacket(struct sockaddr_in, bool);
 
 #endif

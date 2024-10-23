@@ -82,18 +82,19 @@ void buildPacket(char* builtPacket, struct PacketFields packetFields, bool debug
 }
 
 /*
-  * Purpose: Read a packet that has been sent by another network node
+  * Purpose: Read a packet that has been sent by another network node. Take the packet in as a string and extract
+  * its fields into the the the packet fields data type
   * Input:
   * - String containing the packet that was sent
   * - Struct to put the read out fields into
   * Output:
-  * - -1: Packet invalid. Error could be on client's end or in transmission.
-  * - 0: Valid packet.
+  * - -1: Packet invalid. Error could be on client's end or in transmission
+  * - 0: Valid packet
 */
 int readPacket(char* packetToBeRead, struct PacketFields* packetFields) {
-  // Delimiters
   const char* middle = packetDelimiters.middle;
   const char* end = packetDelimiters.end;
+  const int endLength = packetDelimiters.endLength;
 
   // Type
   while (strncmp(packetToBeRead, middle, 1) != 0) {
@@ -103,9 +104,7 @@ int readPacket(char* packetToBeRead, struct PacketFields* packetFields) {
   packetToBeRead++; // Past middle delimiter
 
   // Data
-  const int endLength = strlen(packetDelimiters.end);
   bool atEnd = false;
-
   while (!atEnd) {
     while (strncmp(packetToBeRead, middle, 1) != 0) {
       strncat(packetFields->data, packetToBeRead, 1);
@@ -117,6 +116,7 @@ int readPacket(char* packetToBeRead, struct PacketFields* packetFields) {
       atEnd = true;
     }
   }
+
   return 0;
 }
 
@@ -141,42 +141,22 @@ bool checkEnd(char* packet) {
   * Input: 
   * - The packet to read the field from
   * - String to return the field in
-  * - Delimiter marking the end of the field
   * - Debug flag
-  * Output: None
+  * Output: The packet after reading the field from it
 */
-void readPacketField(char* packet, char* field, const char* fieldDelimiter, bool debugFlag) {
+char* readPacketField(char* packet, char* field, bool debugFlag) {
   if (debugFlag) {
     printf("Reading field from packet: %s\n", packet);     
   }
 
-  char* packetCopy = calloc(1, MAX_PACKET);
-  char* packetCopyBeginning = packetCopy;
-  strcpy(packetCopy, packet);
-
-  while(strncmp(packetCopy, fieldDelimiter, 1) != 0) {
-    strncat(field, packetCopy, 1);
-    packetCopy++;
+  while(strncmp(packet, packetDelimiters.middle, 1) != 0) {
+    strncat(field, packet, 1);
+    packet++;
   }
+  packet++;
 
   if (debugFlag) {
     printf("Field read: %s\n", field);
   }
-  free(packetCopyBeginning);
-}
-
-/*
-  * Purpose: Skip a field in a packet. Advances the packet pointer past the current field
-  * Input: 
-  * - Packet to skip a field in
-  * - Delimiter marking the end of the field to skip
-  * - Debug flag
-  * Output: Packet with one less field
-*/
-char* skipPacketField(char* packet, const char* fieldDelimiter, bool debugFlag) {
-  char* dummyField = calloc(1, 50);
-  readPacketField(packet, dummyField, fieldDelimiter, debugFlag);
-  packet += strlen(dummyField) + 1;
-  free(dummyField);
   return packet;
 }

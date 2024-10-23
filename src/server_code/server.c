@@ -18,7 +18,7 @@
 
 
 // Global so that signal handler can free resources
-int listeningUDPSocketDescriptor;
+int udpSocketDescriptor;
 char* packet;
 
 struct ConnectedClient connectedClients[MAX_CONNECTED_CLIENTS];
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
   
   checkCommandLineArguments(argc, argv, &debugFlag);
 
-  listeningUDPSocketDescriptor = setupUdpSocket(serverAddress, 1);
+  udpSocketDescriptor = setupUdpSocket(serverAddress, 1);
   
   packet = calloc(1, INITIAL_MESSAGE_SIZE);
   
@@ -65,8 +65,8 @@ int main(int argc, char* argv[]) {
 
   // Continously listen for new UDP packets and new TCP connections
   while (1) {
-    memset(packet, 0, sizeof(packet));
-    packetAvailable = checkUdpSocket(listeningUDPSocketDescriptor, &clientUDPAddress, packet, debugFlag);  // Check the UDP socket
+    memset(packet, 0, INITIAL_MESSAGE_SIZE);
+    packetAvailable = checkUdpSocket(udpSocketDescriptor, &clientUDPAddress, packet, debugFlag);  // Check the UDP socket
 
     if (!packetAvailable) {
       continue;
@@ -85,20 +85,15 @@ int main(int argc, char* argv[]) {
       if (debugFlag) {
         printf("Status packet received\n");
       }
-      struct PacketFields packetFields;
-      memset(&packetFields, 0, sizeof(packetFields));
-      readPacket(packet, &packetFields);
-
       int handleStatusReturn = handleStatusPacket(clientUDPAddress);
       break;
 
       case 2:
-        /*
       if (debugFlag) {
         printf("Resource packet received\n");
       }
-      int resourceReturn = handleResourcePacket(clientUDPAddress);
-      */
+      handleResourcePacket(clientUDPAddress, debugFlag);
+      break;
 
       default:
     }
@@ -146,7 +141,7 @@ void* checkClientStatus(void* input) {
 
       client->status = false;         // Assume client is disconnected and will not respond
       client->requestedStatus = true; // Requested a response from the client
-      sendUdpMessage(listeningUDPSocketDescriptor, clientUdpAddress, statusPacket, debugFlag);
+      sendUdpMessage(udpSocketDescriptor, clientUdpAddress, statusPacket, debugFlag);
       if (debugFlag) {
         printf("Status packet sent to client %d\n", clientIndex);
       }
@@ -176,7 +171,7 @@ void* checkClientStatus(void* input) {
 */
 void shutdownServer(int signal) {
   free(packet);
-  close(listeningUDPSocketDescriptor);
+  close(udpSocketDescriptor);
   printf("\n");
   exit(0);
 }
@@ -239,21 +234,25 @@ void printAllConnectedClients() {
 }
 
 /*
-  * Purpose: Print out all available resources. Print all the fields of the resource type. Traverses
-  * the linked list that the available resources are stored in.
-  * Input:
-  * - None
+  * Purpose: Traverse the data field in a packet and add the resources in the data field
+  * to the resource directory
+  * Input: 
+  * - Packet containing the available resources. Packet is assumed to point at the beginning of the data field
+  * - Username of the client who sent the packet
+  * - Delimiter marking the end of each resource
+  * - Debug flag
   * Output: None
 */
-void printAllResources() {
-  printf("\n*** PRINTING ALL RESOURCES***\n");
-  struct Resource* currentResource = headResource;
-  while (currentResource) {
-    printf("USERNAME: %s\n", currentResource->username);
-    printf("FILENAME: %s\n", currentResource->filename);
-    currentResource = currentResource->next;
+void addResourcesToDirectory(char* packet, char* username, const char* fieldDelimiter, bool debugFlag) {
+  char* resources = calloc(1, MAX_DATA);
+  char* resourcesBeginning = resources;
+  while (checkEnd(packet) == false) {
+    readPacketField(packet, resources, debugFlag);
+    headResource = addResource(headResource, username, resources);
+    packet += strlen(resources) + 1;
+    memset(resources, 0, strlen(resources));
   }
-  printf("\n");
+  free(resourcesBeginning);
 }
 
 /*
@@ -281,15 +280,17 @@ int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress, bo
 
   const char* middle = packetDelimiters.middle;
   const char* end = packetDelimiters.end;
-  const int endLength = strlen(end);
+  const int endLength = packetDelimiters.endLength;
 
   // Don't care about type field
-  packetCopy = skipPacketField(packetCopy, middle, debugFlag);  
+  char* typeField = calloc(1, MAX_PACKET);
+  packetCopy = readPacketField(packetCopy, typeField, debugFlag);  
+  free(typeField);
 
   // Username
   char* username = calloc(1, MAX_USERNAME);
   char* usernameBeginning = username;
-  readPacketField(packetCopy, username, middle, debugFlag);
+  readPacketField(packetCopy, username, debugFlag);
   strcpy(emptyClient->username, username);
   packetCopy += strlen(username) + 1;
 
@@ -300,31 +301,9 @@ int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress, bo
 
   if (debugFlag) {
     printAllConnectedClients();
-    printAllResources();
+    printAllResources(headResource);
   }
   return 0;
-}
-
-/*
-  * Purpose: Traverse the data field in a packet and add the resources in the data field
-  * to the resource directory
-  * Input: 
-  * - Packet containing the available resources. Packet is assumed to point at the beginning of the data field
-  * - Username of the client who sent the packet
-  * - Delimiter marking the end of each resource
-  * - Debug flag
-  * Output: None
-*/
-void addResourcesToDirectory(char* packet, char* username, const char* fieldDelimiter, bool debugFlag) {
-  char* resources = calloc(1, MAX_DATA);
-  char* resourcesBeginning = resources;
-  while (checkEnd(packet) == false) {
-    readPacketField(packet, resources, fieldDelimiter, debugFlag);
-    headResource = addResource(headResource, username, resources);
-    packet += strlen(resources) + 1;
-    memset(resources, 0, strlen(resources));
-  }
-  free(resourcesBeginning);
 }
 
 /*
@@ -363,15 +342,20 @@ int handleStatusPacket(struct sockaddr_in clientUdpAddress) {
   return 0;
 }
 
-/*
-int handleResourcePacket(struct sockaddr_in clientUdpAddress) {
-  int clientIndex = 0;
-  struct ConnectedClient* currentClient;
+int handleResourcePacket(struct sockaddr_in clientUdpAddress, bool debugFlag) {
+  struct PacketFields packetFields;
+  memset(&packetFields, 0, sizeof(packetFields));
+  strcpy(packetFields.type, "resource");
 
-  for (clientIndex = 0; clientIndex < MAX_CONNECTED_CLIENTS; clientIndex++) {
-    currentClient = &connectedClients[clientIndex];
-  }
+  char* resourceString = calloc(1, MAX_DATA);
+  resourceString = makeResourceString(resourceString, headResource, packetDelimiters.middle);
+  strcpy(packetFields.data, resourceString);
+
+  char* packet = calloc(1, MAX_PACKET);
+
+  buildPacket(packet, packetFields, debugFlag);
+
+  sendUdpMessage(udpSocketDescriptor, clientUdpAddress, packet, debugFlag);
 
   return 0;
 }
-*/

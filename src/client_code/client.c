@@ -18,13 +18,10 @@
 #include "../common/packet.h"
 #include "client.h"
 
-// Global flags
-bool debugFlag = false;  // Can add conditional statements with this flag to print out extra info
-
-// Global variables (for signal handler)
+// Global so that signal handler can free resources
 int udpSocketDescriptor;
 char* userInput;
-char* buffer;
+char* packetBuffer;
 
 // Packet delimiters that are constant for all packets
 // See packet.h & packet.c
@@ -32,35 +29,33 @@ extern struct PacketDelimiters packetDelimiters;
 
 // Main
 int main(int argc, char* argv[]) {
-  // Assign callback function for ctrl-c
+  // Assign callback function to handle ctrl-c
   signal(SIGINT, shutdownClient);
-
-  // Allocate memory for user input
-  userInput = calloc(1, USER_INPUT_BUFFER_LENGTH);
   
-  // Socket address data structure of the server
+  // Address of server
   struct sockaddr_in serverAddress;
-
-  // Setup address of server to send to
   serverAddress.sin_family = AF_INET;
   serverAddress.sin_port = htons(PORT);
   serverAddress.sin_addr.s_addr = INADDR_ANY;
-
-  // Check command line arguments
-  checkCommandLineArguments(argc, argv, &debugFlag);
  
-  // Setup UDP socket
+  // Local UDP
   struct sockaddr_in udpAddress;
   memset(&udpAddress, 0, sizeof(udpAddress));
-  udpSocketDescriptor = setupUdpSocket(udpAddress, 0);
+  bool bindFlag = false;
+  udpSocketDescriptor = setupUdpSocket(udpAddress, bindFlag);
+
+  bool debugFlag = false;
+  checkCommandLineArguments(argc, argv, &debugFlag);
 
   if (sendConnectionPacket(serverAddress, debugFlag) == -1) {
     printf("Error sending connection packet\n");
   }
 
   fd_set read_fds;
-  buffer = calloc(1, 1000);
+  userInput = calloc(1, MAX_USER_INPUT);
+  packetBuffer = calloc(1, MAX_PACKET);
 
+  // Loop to handle user input and incoming packets
   while(1) {
     // Use select to handle user input and server messages simultaneously
     FD_ZERO(&read_fds);
@@ -73,84 +68,91 @@ int main(int argc, char* argv[]) {
         perror("select error");
     }
 
+    // User input
     if (FD_ISSET(0, &read_fds)) {
       getUserInput(userInput);
 
-      if (strcmp(userInput, "test") == 0) {
-        /*
-        struct ResourcePacketFields resourcePacketFields;
-        strcpy(resourcePacketFields.test, "testing");
-        char* resourcePacket = calloc(1, MAX_RESOURCE_PACKET_SIZE);
-        buildResourcePacket(resourcePacket, resourcePacketFields, debugFlag);               // Build the entire connection packet
-        sendUdpMessage(udpSocketDescriptor, serverAddress, resourcePacket, debugFlag);  // Send connection packet to the server
-        free(resourcePacket);
-        */
+      if (strcmp(userInput, "resources") == 0) {
+        sendResourcePacket(serverAddress, debugFlag);
       }
 
       // User just pressed return
-      if (strlen(userInput) == 0) {  
+      if (strlen(userInput) == 0) {
         continue;
       }
     }
-    if (FD_ISSET(udpSocketDescriptor, &read_fds)) { // Message in UDP socket queue
-      int bytesReceived = recvfrom(udpSocketDescriptor, buffer, USER_INPUT_BUFFER_LENGTH, 0, NULL, NULL);
-      int packetType = getPacketType(buffer);
+    // Message in UDP queue
+    if (FD_ISSET(udpSocketDescriptor, &read_fds)) {
+      int bytesReceived = recvfrom(udpSocketDescriptor, packetBuffer, MAX_PACKET, 0, NULL, NULL);
 
-      // Assume that it is a status packet
-      struct PacketFields packetFields;
-      memset(&packetFields, 0, sizeof(packetFields));
-      strcpy(packetFields.type, "status");
-      strcat(packetFields.data, "testing");
-      strcat(packetFields.data, "$");
-      char* statusPacket = calloc(1, MAX_PACKET);
-      buildPacket(statusPacket, packetFields, debugFlag);
-      sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);
-      free(statusPacket);
+      int packetType = getPacketType(packetBuffer);
+      switch(packetType) {
+        // Connection
+        case 0:
+        if (debugFlag) {
+          printf("Connection packet received\n");
+        }
+
+        break;
+
+        // Status
+        case 1:
+        if (debugFlag) {
+          printf("Status packet received\n");
+        }
+        handleStatusPacket(serverAddress, debugFlag);
+
+        break;
+
+        // Resource
+        case 2:
+        if (debugFlag) {
+          printf("Resource packet received\n");
+        }
+        handleResourcePacket(packetBuffer, debugFlag);
+
+        break;
+
+        default:
+      }
+
     }
   }
 	return 0;
 } 
 
-
 /*
- * Name: shutdownClient
- * Purpose: Gracefully shutdown the client.
+ * Purpose: Free all resources associated with the client
  * Input: Signal received
  * Output: None
  */
 void shutdownClient(int signal) {
-  free(userInput);            // Free user input
-  free(buffer);
-  close(udpSocketDescriptor); // Close UDP socket
+  free(userInput);
+  free(packetBuffer);
+  close(udpSocketDescriptor);
   printf("\n");
   exit(0);
 }
 
-
 /*
-  * Name: getUserInput
   * Purpose: Get user input from standard in and remove the newline
   * Input: Buffer to store user input in
   * Output: None
 */
 void getUserInput(char* userInput) {
-  fgets(userInput, USER_INPUT_BUFFER_LENGTH, stdin);  // Get the input
-  userInput[strcspn(userInput, "\n")] = 0;            // Remove \n
+  fgets(userInput, MAX_USER_INPUT, stdin);
+  userInput[strcspn(userInput, "\n")] = 0;
 }
 
-
 /*
-  * Name: receiveMessageFromServer
   * Purpose: Receive a UDP message from the server
-  * Input: 
-  * - None
-  * Output:
-  * - None
+  * Input: None
+  * Output: None
 */
 void receiveMessageFromServer() {
-    char buffer[USER_INPUT_BUFFER_LENGTH];
+    char buffer[MAX_USER_INPUT];
     memset(buffer, 0, sizeof(buffer));  // Clear the buffer before receiving a new message
-    int bytesReceived = recvfrom(udpSocketDescriptor, buffer, USER_INPUT_BUFFER_LENGTH, 0, NULL, NULL);
+    int bytesReceived = recvfrom(udpSocketDescriptor, buffer, MAX_USER_INPUT, 0, NULL, NULL);
     if (bytesReceived > 0) {
         buffer[bytesReceived] = '\0';   // Null-terminate the received string
         printf("Message from server: %s\n", buffer);
@@ -158,7 +160,6 @@ void receiveMessageFromServer() {
         perror("Error receiving message from server");
     }
 }
-
 
 /*
   * Purpose: Get the available resources on the client and add them to the available
@@ -202,11 +203,18 @@ int getAvailableResources(char* availableResources, const char* directoryName) {
 */
 int sendConnectionPacket(struct sockaddr_in serverAddress, bool debugFlag) {
   struct PacketFields packetFields; 
+
+  // Type
   strcpy(packetFields.type, "connection");
 
-  strcpy(packetFields.data, getenv("USER"));
+  // Username
+  char* username = calloc(1, MAX_USERNAME);
+  setUsername(username);
+  strcpy(packetFields.data, username);
   strncat(packetFields.data, packetDelimiters.middle, packetDelimiters.middleLength);
+  free(username);
 
+  // Available resources
   char* availableResources = calloc(1, MAX_DATA);
   if (getAvailableResources(availableResources, "Public") == -1) {
     return -1;
@@ -222,3 +230,118 @@ int sendConnectionPacket(struct sockaddr_in serverAddress, bool debugFlag) {
   return 0;
 }
 
+/*
+  * Purpose: Send a resource packet to the server. This indicates that the client would
+  * like to know all of the available resources on the network
+  * Input: 
+  * - Address of server to send the packet to
+  * - Debug flag
+  * Output: None
+*/
+void sendResourcePacket(struct sockaddr_in serverAddress, bool debugFlag) {
+  struct PacketFields packetFields;
+  strcpy(packetFields.type, "resource");
+  char* packet = calloc(1, MAX_PACKET);
+  buildPacket(packet, packetFields, debugFlag);
+  sendUdpMessage(udpSocketDescriptor, serverAddress, packet, debugFlag);
+  free(packet);
+}
+
+void handleResourcePacket(char* packet, bool debugFlag) {
+  char* packetCopy = calloc(1, MAX_PACKET);
+  char* packetCopyBeginning = packetCopy;
+  strcpy(packetCopy, packet);
+
+  // Don't care about packet type
+  char* field = calloc(1, MAX_DATA);
+  packetCopy = readPacketField(packetCopy, field, debugFlag);
+
+  int fieldCount = 0;
+  char* username = calloc(1, MAX_USERNAME);
+  while (!checkEnd(packetCopy)) {
+    memset(field, 0, strlen(field));
+    packetCopy = readPacketField(packetCopy, field, debugFlag);
+
+    if (fieldCount == 0) {
+      strcpy(username, field);
+      printf("Username: %s\n", username);
+    }
+
+    // Username
+    if (fieldCount % 2 == 0) {
+      if (strcmp(username, field) == 0) {
+        ;
+      }
+      else {
+        strcpy(username, field);
+        printf("Username: %s\n", username);
+      }
+    }
+    // Filename
+    else {
+      printf("Filename: %s\n", field);
+    }
+    fieldCount++;
+  }
+
+  free(packetCopyBeginning);
+  free(field);
+  free(username);
+}
+
+/*
+  * Purpose: When the client receives a status packet, send one back. The data field of this packet
+  * doesn't matter too much as the client just needs to response to be considered still connected to the server.
+  * Input: 
+  * - Address of server to send the response status packet to
+  * - Debug flag
+  * Output: None
+*/
+void handleStatusPacket(struct sockaddr_in serverAddress, bool debugFlag) {
+  struct PacketFields packetFields;
+  memset(&packetFields, 0, sizeof(packetFields));
+
+  strcpy(packetFields.type, "status");
+  strcat(packetFields.data, "testing");
+  strcat(packetFields.data, "$");
+
+  char* statusPacket = calloc(1, MAX_PACKET);
+  buildPacket(statusPacket, packetFields, debugFlag);
+  sendUdpMessage(udpSocketDescriptor, serverAddress, statusPacket, debugFlag);
+  free(statusPacket);
+}
+
+/*
+  * Purpose: Ask the user what username they would like to use when connecting to the server. Allows the 
+  * user to use their default username on the OS, or choose their own.
+  * Input: Username string to copy the user's username choice into
+  * Output: None
+*/
+void setUsername(char* username) {
+  printf("\nWhat username would you like to use?\n");
+  printf("Press 0 for system username\n");
+  printf("Press 1 for custom username\n");
+
+  bool validUsername = false;
+  while (validUsername == false) {
+    validUsername = true;
+    char* userInput = calloc(1, MAX_USER_INPUT);
+    getUserInput(userInput);
+
+    if (strcmp(userInput, "0") == 0) {
+      strcpy(username, getenv("USER"));
+      printf("System username chosen, welcome %s\n", username);
+    }
+    else if (strcmp(userInput, "1") == 0) {
+      memset(userInput, 0, MAX_USER_INPUT);
+      printf("Custom username chosen, please enter custom username:\n");
+      getUserInput(userInput);
+      strcpy(username, userInput);
+      printf("Welcome %s\n", username);
+    }
+    else {
+      printf("Invalid option chosen, please try again\n");
+      validUsername = false;
+    }
+  }
+}

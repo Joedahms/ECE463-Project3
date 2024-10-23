@@ -23,12 +23,17 @@
 */
 void checkCommandLineArguments(int argc, char** argv, bool* debugFlag) {
   char* programName = argv[0];
-	switch (argc) {                       // Check how many command line arguments are passed
+  programName += 2;
+
+	switch (argc) {
+    // Normal
 		case 1:
 			printf("Running %s in normal mode\n", programName);
 			break;
+
+    // Debug mode
 		case 2:
-			if (strcmp(argv[1], "-d") == 0) { // Check if debug flag
+			if (strcmp(argv[1], "-d") == 0) {
 				*debugFlag = 1;
 				printf("Running %s in debug mode\n", programName);
 			}
@@ -36,11 +41,12 @@ void checkCommandLineArguments(int argc, char** argv, bool* debugFlag) {
 				printf("Invalid usage of %s", programName);
 			}
 			break;
+
+    // Invalid
     default:
 			printf("Invalid usage of %s", programName);
 	}
 }
-
 
 /*
   * Purpose: Send a message via UDP
@@ -57,9 +63,9 @@ void sendUdpMessage(int udpSocketDescriptor, struct sockaddr_in destinationAddre
     printf("%s\n", message);
   }
 
-  int sendtoReturnValue = 0;
-  sendtoReturnValue = sendto(udpSocketDescriptor, message, strlen(message), 0, (struct sockaddr *)&destinationAddress, sizeof(destinationAddress));
-  if (sendtoReturnValue == -1) {
+  int sendtoReturn = 0;
+  sendtoReturn = sendto(udpSocketDescriptor, message, strlen(message), 0, (struct sockaddr *)&destinationAddress, sizeof(destinationAddress));
+  if (sendtoReturn == -1) {
     perror("UDP send error");
     exit(1);
   }
@@ -68,10 +74,9 @@ void sendUdpMessage(int udpSocketDescriptor, struct sockaddr_in destinationAddre
   }
 }
 
-
 /*
   * Name: printReceivedMessage
-  * Purpose: Print out a message along with its source
+  * Purpose: Print out a message along with where it came from
   * Input: 
   * - Who sent the message
   * - How long the received message is
@@ -87,7 +92,6 @@ void printReceivedMessage(struct sockaddr_in sender, int bytesReceived, char* me
     printf("%s\n", message);
   }
 }
-
 
 /*
   * Name: readFile
@@ -137,7 +141,6 @@ int readFile(char* fileName, char* buffer, bool debugFlag) {
   return 0;
 }
 
-
 /*
   * Name: writeFile
   * Purpose: Open a file and write to it
@@ -166,7 +169,6 @@ int writeFile(char* fileName, char* fileContents, size_t fileSize) {
   }
   return 0;
 }
-
 
 /*
  * Name: setupUdpSocket
@@ -208,10 +210,9 @@ int setupUdpSocket(struct sockaddr_in serverAddress, bool bindFlag) {
   return udpSocketDescriptor;
 }
 
-
 /*
   * Name: checkUdpSocket
-  * Purpose: Check if there is an incoming message on a UDP port.
+  * Purpose: Check if there is message on a UDP port.
   * Input:
   * - Address of the UDP port that is receiving messages.
   * - If message is received, socket address data structure to store the senders address in
@@ -222,21 +223,19 @@ int setupUdpSocket(struct sockaddr_in serverAddress, bool bindFlag) {
   * 1: There is an incoming message
 */
 int checkUdpSocket(int listeningUDPSocketDescriptor, struct sockaddr_in* incomingAddress, char* message, bool debugFlag) {
-  // Check for incoming messages
   socklen_t incomingAddressLength = sizeof(incomingAddress);
   int bytesReceived = recvfrom(listeningUDPSocketDescriptor, message, INITIAL_MESSAGE_SIZE, 0, (struct sockaddr *)incomingAddress, &incomingAddressLength);
   int nonBlockingReturn = handleErrorNonBlocking(bytesReceived);
 
-  if (nonBlockingReturn == 1) {                 // No incoming messages
-    return 0;                                   // Return 0
+  // No incoming message
+  if (nonBlockingReturn == 1) {
+    return 0;
   }
-  // Use message here
 
-  // Print out UDP message
+  // Incoming message
   printReceivedMessage(*incomingAddress, bytesReceived, message, debugFlag); 
   return 1;
 }
-
 
 /*
   * Name: handleErrorNonBlocking
@@ -247,7 +246,7 @@ int checkUdpSocket(int listeningUDPSocketDescriptor, struct sockaddr_in* incomin
   * - 1: No data waiting to be read
 */
 int handleErrorNonBlocking(int returnValue) {
-  if (returnValue == -1) {                          // Error
+  if (returnValue == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {  // Errors occuring from no message on non blocking socket
       return 1;
     }
