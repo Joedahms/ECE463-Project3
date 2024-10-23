@@ -2,6 +2,7 @@
 #define RESOURCE_H
 
 #include "../common/network_node.h"
+#include "../common/packet.h"
 
 // A single available resource that a connected client possesses. Is a single link
 // in a linked list containing all available resources.

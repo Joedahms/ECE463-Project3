@@ -9,5 +9,8 @@ void receiveMessageFromServer();
 int getAvailableResources(char*, const char*);
 int sendConnectionPacket(struct sockaddr_in, bool);
 void sendResourcePacket(struct sockaddr_in, bool);
+void handleResourcePacket(char*, bool);
+void handleStatusPacket(struct sockaddr_in, bool);
+void setUsername(char*);
 
 #endif

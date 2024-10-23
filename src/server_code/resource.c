@@ -27,7 +27,7 @@ struct Resource* addResource(struct Resource* headResource, char* username, char
   * Purpose: Print out all available resources. Print all the fields of the resource type. Traverses
   * the linked list that the available resources are stored in.
   * Input:
-  * - None
+  * - The first resource in the resource directory
   * Output: None
 */
 void printAllResources(struct Resource* headResource) {
@@ -41,13 +41,22 @@ void printAllResources(struct Resource* headResource) {
   printf("\n");
 }
 
+/*
+  * Purpose: Take all the available resources and put them into one string. Add the username then the
+  * filename of each resource
+  * Input: 
+  * - String to put all the resources in
+  * - The first resource in the resource directory
+  * - Delimiter to put between resources
+  * Output:
+*/
 char* makeResourceString(char* resourceString, struct Resource* headResource, char* delimiter) {
   struct Resource* currentResource = headResource;
   while (currentResource) {
     strncat(resourceString, currentResource->username, strlen(currentResource->username));
-    strncat(resourceString, delimiter, strlen(delimiter));
+    strcat(resourceString, delimiter);
     strncat(resourceString, currentResource->filename, strlen(currentResource->filename));
-    strncat(resourceString, delimiter, strlen(delimiter));
+    strcat(resourceString, delimiter);
     currentResource = currentResource->next;
   }
   return resourceString;

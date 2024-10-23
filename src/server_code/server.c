@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
 
   // Continously listen for new UDP packets and new TCP connections
   while (1) {
-    memset(packet, 0, sizeof(packet));
+    memset(packet, 0, INITIAL_MESSAGE_SIZE);
     packetAvailable = checkUdpSocket(udpSocketDescriptor, &clientUDPAddress, packet, debugFlag);  // Check the UDP socket
 
     if (!packetAvailable) {
@@ -234,6 +234,28 @@ void printAllConnectedClients() {
 }
 
 /*
+  * Purpose: Traverse the data field in a packet and add the resources in the data field
+  * to the resource directory
+  * Input: 
+  * - Packet containing the available resources. Packet is assumed to point at the beginning of the data field
+  * - Username of the client who sent the packet
+  * - Delimiter marking the end of each resource
+  * - Debug flag
+  * Output: None
+*/
+void addResourcesToDirectory(char* packet, char* username, const char* fieldDelimiter, bool debugFlag) {
+  char* resources = calloc(1, MAX_DATA);
+  char* resourcesBeginning = resources;
+  while (checkEnd(packet) == false) {
+    readPacketField(packet, resources, debugFlag);
+    headResource = addResource(headResource, username, resources);
+    packet += strlen(resources) + 1;
+    memset(resources, 0, strlen(resources));
+  }
+  free(resourcesBeginning);
+}
+
+/*
   * Purpose: When the server receives a connection packet, this function handles the data
   * in that packet. It finds an empty connected client and enters the packet sender's information
   * into that empty spot.
@@ -258,15 +280,17 @@ int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress, bo
 
   const char* middle = packetDelimiters.middle;
   const char* end = packetDelimiters.end;
-  const int endLength = strlen(end);
+  const int endLength = packetDelimiters.endLength;
 
   // Don't care about type field
-  packetCopy = skipPacketField(packetCopy, middle, debugFlag);  
+  char* typeField = calloc(1, MAX_PACKET);
+  packetCopy = readPacketField(packetCopy, typeField, debugFlag);  
+  free(typeField);
 
   // Username
   char* username = calloc(1, MAX_USERNAME);
   char* usernameBeginning = username;
-  readPacketField(packetCopy, username, middle, debugFlag);
+  readPacketField(packetCopy, username, debugFlag);
   strcpy(emptyClient->username, username);
   packetCopy += strlen(username) + 1;
 
@@ -280,28 +304,6 @@ int handleConnectionPacket(char* packet, struct sockaddr_in clientUDPAddress, bo
     printAllResources(headResource);
   }
   return 0;
-}
-
-/*
-  * Purpose: Traverse the data field in a packet and add the resources in the data field
-  * to the resource directory
-  * Input: 
-  * - Packet containing the available resources. Packet is assumed to point at the beginning of the data field
-  * - Username of the client who sent the packet
-  * - Delimiter marking the end of each resource
-  * - Debug flag
-  * Output: None
-*/
-void addResourcesToDirectory(char* packet, char* username, const char* fieldDelimiter, bool debugFlag) {
-  char* resources = calloc(1, MAX_DATA);
-  char* resourcesBeginning = resources;
-  while (checkEnd(packet) == false) {
-    readPacketField(packet, resources, fieldDelimiter, debugFlag);
-    headResource = addResource(headResource, username, resources);
-    packet += strlen(resources) + 1;
-    memset(resources, 0, strlen(resources));
-  }
-  free(resourcesBeginning);
 }
 
 /*
@@ -347,7 +349,6 @@ int handleResourcePacket(struct sockaddr_in clientUdpAddress, bool debugFlag) {
 
   char* resourceString = calloc(1, MAX_DATA);
   resourceString = makeResourceString(resourceString, headResource, packetDelimiters.middle);
-  printf("resource string: %s\n", resourceString);
   strcpy(packetFields.data, resourceString);
 
   char* packet = calloc(1, MAX_PACKET);
