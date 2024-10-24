@@ -61,3 +61,24 @@ char* makeResourceString(char* resourceString, struct Resource* headResource, ch
   }
   return resourceString;
 }
+
+struct Resource* removeUserResources(char* username, struct Resource* headResource) {
+  struct Resource* previousResource;
+  struct Resource* currentResource = headResource;
+
+  bool atHead = true;
+
+  while (currentResource) {
+    if (strcmp(currentResource->username, username) == 0) {
+      if (atHead) {
+        headResource = currentResource->next;
+        //free(currentResource);
+      }
+    }
+    else {
+      atHead = false;
+    }
+    currentResource = currentResource->next;
+  }
+  return headResource;
+}

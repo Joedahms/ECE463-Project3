@@ -156,6 +156,7 @@ void* checkClientStatus(void* input) {
         if (debugFlag) {
           printf("Client %d disconnected\n", clientIndex);
         }
+        headResource = removeUserResources(client->username, headResource);
         memset(client, 0, sizeof(*client));
       }
     }
