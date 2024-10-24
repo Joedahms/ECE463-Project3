@@ -72,12 +72,16 @@ struct Resource* removeUserResources(char* username, struct Resource* headResour
     if (strcmp(currentResource->username, username) == 0) {
       if (atHead) {
         headResource = currentResource->next;
+      }
+      else {
+        previousResource->next = currentResource->next; 
         //free(currentResource);
       }
     }
     else {
       atHead = false;
     }
+    previousResource = currentResource;
     currentResource = currentResource->next;
   }
   return headResource;
