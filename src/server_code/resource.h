@@ -1,6 +1,8 @@
 #ifndef RESOURCE_H
 #define RESOURCE_H
 
+#include <stdbool.h>
+
 #include "../common/network_node.h"
 #include "../common/packet.h"
 
@@ -15,6 +17,6 @@ struct Resource {
 struct Resource* addResource(struct Resource*, char*, char*);
 void printAllResources(struct Resource*);
 char* makeResourceString(char*, struct Resource*, char*);
-struct Resource* removeUserResources(char*, struct Resource*);
+struct Resource* removeUserResources(char*, struct Resource*, bool);
 
 #endif

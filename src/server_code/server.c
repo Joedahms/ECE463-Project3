@@ -39,7 +39,10 @@ int main(int argc, char* argv[]) {
     memset(&(connectedClients[i].socketUdpAddress), 0, sizeof(connectedClients[i].socketUdpAddress));
   }
 
-  struct Resource* headResource = NULL;
+  struct Resource* headResource = malloc(sizeof(struct Resource));
+  headResource->next = NULL;
+//  printf("%s\n", headResource->username);
+  //headResource->next = NULL;
 
   // Initialize socket address stuctures
   struct sockaddr_in serverAddress;                   // Socket address that clients should connect to
@@ -156,7 +159,7 @@ void* checkClientStatus(void* input) {
         if (debugFlag) {
           printf("Client %d disconnected\n", clientIndex);
         }
-        headResource = removeUserResources(client->username, headResource);
+        headResource = removeUserResources(client->username, headResource, debugFlag);
         memset(client, 0, sizeof(*client));
       }
     }

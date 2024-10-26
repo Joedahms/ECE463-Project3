@@ -62,20 +62,54 @@ char* makeResourceString(char* resourceString, struct Resource* headResource, ch
   return resourceString;
 }
 
-struct Resource* removeUserResources(char* username, struct Resource* headResource) {
+struct Resource* removeUserResources(char* username, struct Resource* headResource, bool debugFlag) {
   struct Resource* previousResource;
   struct Resource* currentResource = headResource;
 
   bool atHead = true;
 
-  while (currentResource) {
+  while (currentResource) { // While not at end of resource list
     if (strcmp(currentResource->username, username) == 0) {
       if (atHead) {
+        if (debugFlag) {
+          printf("Removing resource %s at head\n", currentResource->filename);
+          printf("currentResource->username: %s\n", currentResource->username);
+          printf("currentResource->filename: %s\n", currentResource->filename);
+          printf("currentResource->next->username: %s\n", currentResource->next->username);
+          printf("currentResource->next->filename: %s\n", currentResource->next->filename);
+        }
         headResource = currentResource->next;
       }
       else {
+        if (debugFlag) {
+          printf("BEFORE REMOVAL\n");
+          printf("Removing resource %s not at head\n", currentResource->filename);
+          printf("previousResource->username: %s\n", previousResource->username);
+          printf("previousResource->filename: %s\n", previousResource->filename);
+          printf("previousResource->next->username: %s\n", previousResource->next->username);
+          printf("previousResource->next->filename: %s\n", previousResource->next->filename);
+          printf("currentResource->username: %s\n", currentResource->username);
+          printf("currentResource->filename: %s\n", currentResource->filename);
+          printf("currentResource->next->username: %s\n", currentResource->next->username);
+          printf("currentResource->next->filename: %s\n", currentResource->next->filename);
+        }
+        if (currentResource->next->next == NULL) {
+          previousResource->next = NULL;
+          break;
+        }
         previousResource->next = currentResource->next; 
-        //free(currentResource);
+        currentResource = previousResource->next;
+        if (debugFlag) {
+          printf("AFTER REMOVAL\n");
+          printf("previousResource->username: %s\n", previousResource->username);
+          printf("previousResource->filename: %s\n", previousResource->filename);
+          printf("previousResource->next->username: %s\n", previousResource->next->username);
+          printf("previousResource->next->filename: %s\n", previousResource->next->filename);
+          printf("currentResource->username: %s\n", currentResource->username);
+          printf("currentResource->filename: %s\n", currentResource->filename);
+          printf("currentResource->next->username: %s\n", currentResource->next->username);
+          printf("currentResource->next->filename: %s\n", currentResource->next->filename);
+        }
       }
     }
     else {
@@ -83,6 +117,10 @@ struct Resource* removeUserResources(char* username, struct Resource* headResour
     }
     previousResource = currentResource;
     currentResource = currentResource->next;
+  }
+  if (debugFlag) {
+    printf("Resource directory after removing user %s resources", username);
+    printAllResources(headResource);
   }
   return headResource;
 }
