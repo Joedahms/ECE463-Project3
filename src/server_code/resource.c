@@ -75,6 +75,9 @@ char* makeResourceString(char* resourceString, struct Resource* headResource, ch
   * - directory, the head will change.
 */
 struct Resource* removeUserResources(char* username, struct Resource* headResource, bool debugFlag) {
+  if (debugFlag) {
+    printf("\nRemoving resources for user: %s\n", username);
+  }
   struct Resource* previousResource;
   struct Resource* currentResource = headResource;
 
@@ -86,20 +89,25 @@ struct Resource* removeUserResources(char* username, struct Resource* headResour
     if (strcmp(currentResource->username, username) == 0) { // Link has username of disconnected user
       if (atHead) {
         headResource = removeHeadResource(headResource, debugFlag);
+        currentResource = headResource;
       }
       else {
         currentResource = removeNonHeadResource(previousResource, currentResource, &atEnd, debugFlag);
         if (atEnd) {
+          if (debugFlag) {
+            printf("At end after removing non head resource\n");
+          }
           break;
         }
       }
     }
     else {
       atHead = false;
+      previousResource = currentResource;
+      currentResource = currentResource->next;
     }
-    previousResource = currentResource;
-    currentResource = currentResource->next;
     if (!currentResource) {
+      printf ("At end of user directory\n");
       atEnd = true;
     }
   }
@@ -118,7 +126,7 @@ struct Resource* removeUserResources(char* username, struct Resource* headResour
   * - Name of the resource for printing purposes
   * Output: None
 */
-void printResourceInfo(struct Resource* resource, char* resourceName) {
+static void printResourceInfo(struct Resource* resource, char* resourceName) {
   printf("%s->username: %s\n", resourceName, resource->username);
   printf("%s->filename: %s\n", resourceName, resource->filename);
   printf("%s->next->username: %s\n", resourceName, resource->next->username);
@@ -132,15 +140,24 @@ void printResourceInfo(struct Resource* resource, char* resourceName) {
   * - debugFlag
   * Output: New head of resource directory
 */
-struct Resource* removeHeadResource(struct Resource* headResource, bool debugFlag) {
+static struct Resource* removeHeadResource(struct Resource* headResource, bool debugFlag) {
   if (debugFlag) {
-    printf("Removing resource %s at head\n", headResource->filename);
+    printf("\nRemoving resource %s at head\n", headResource->filename);
+    printf("BEFORE REMOVAL\n");
     char* resourceName = calloc(1, 20);
     strcpy(resourceName, "headResource");
     printResourceInfo(headResource, resourceName);
     free(resourceName);
   }
   headResource = headResource->next;
+  if (debugFlag) {
+    printf("AFTER REMOVAL\n");
+    char* resourceName = calloc(1, 20);
+    strcpy(resourceName, "headResource");
+    printResourceInfo(headResource, resourceName);
+    free(resourceName);
+    printf("\n");
+  }
   return headResource;
 }
 
@@ -154,27 +171,26 @@ struct Resource* removeHeadResource(struct Resource* headResource, bool debugFla
   * Output: Current resource after removing the resource. Before removal if R1 = Previous Resource, R2 = Current Resource, 
   * R3 = Next Resource, R3 would be returned, as R2 would have been removed.
 */
-struct Resource* removeNonHeadResource(struct Resource* previousResource, struct Resource* currentResource, bool* atEnd, bool debugFlag) {
+static struct Resource* removeNonHeadResource(struct Resource* previousResource, struct Resource* currentResource, bool* atEnd, bool debugFlag) {
   if (debugFlag) {
     char* resourceName = calloc(1, 20);
+    printf("\nRemoving resource %s not at head\n", currentResource->filename);
     printf("BEFORE REMOVAL\n");
-    printf("Removing resource %s not at head\n", currentResource->filename);
     strcpy(resourceName, "previousResource");
     printResourceInfo(previousResource, resourceName);
     strcpy(resourceName, "currentResource");
-    printResourceInfo(previousResource, resourceName);
+    printResourceInfo(currentResource, resourceName);
     free(resourceName);
-  }
-
-  // Indicate that at end of linked list if the last element is removed
-  if (currentResource->next->next == NULL) {
-    previousResource->next = NULL;
-    *atEnd = true;
-    return currentResource;
   }
 
   previousResource->next = currentResource->next; 
   currentResource = previousResource->next;
+
+  // Indicate that at end of linked list if the last element is removed
+  if (currentResource->next == NULL) {
+    *atEnd = true;
+    return currentResource;
+  }
 
   if (debugFlag) {
     char* resourceName = calloc(1, 20);
@@ -182,8 +198,9 @@ struct Resource* removeNonHeadResource(struct Resource* previousResource, struct
     strcpy(resourceName, "previousResource");
     printResourceInfo(previousResource, resourceName);
     strcpy(resourceName, "currentResource");
-    printResourceInfo(previousResource, resourceName);
+    printResourceInfo(currentResource, resourceName);
     free(resourceName);
+    printf("\n");
   }
 
   return currentResource;

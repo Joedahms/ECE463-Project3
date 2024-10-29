@@ -21,7 +21,7 @@
 // Global so that signal handler can free resources
 int udpSocketDescriptor;
 char* userInput;
-char* packetBuffer;
+char* packet;
 
 // Packet delimiters that are constant for all packets
 // See packet.h & packet.c
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
 
   fd_set read_fds;
   userInput = calloc(1, MAX_USER_INPUT);
-  packetBuffer = calloc(1, MAX_PACKET);
+  packet = calloc(1, MAX_PACKET);
 
   // Loop to handle user input and incoming packets
   while(1) {
@@ -81,41 +81,43 @@ int main(int argc, char* argv[]) {
         continue;
       }
     }
+
+    // No message in UDP queue
+    if (!(FD_ISSET(udpSocketDescriptor, &read_fds))) {
+      continue;
+    }
+
     // Message in UDP queue
-    if (FD_ISSET(udpSocketDescriptor, &read_fds)) {
-      int bytesReceived = recvfrom(udpSocketDescriptor, packetBuffer, MAX_PACKET, 0, NULL, NULL);
+    int bytesReceived = recvfrom(udpSocketDescriptor, packet, MAX_PACKET, 0, NULL, NULL);
 
-      int packetType = getPacketType(packetBuffer);
-      switch(packetType) {
-        // Connection
-        case 0:
-        if (debugFlag) {
-          printf("Connection packet received\n");
-        }
-
-        break;
-
-        // Status
-        case 1:
-        if (debugFlag) {
-          printf("Status packet received\n");
-        }
-        handleStatusPacket(serverAddress, debugFlag);
-
-        break;
-
-        // Resource
-        case 2:
-        if (debugFlag) {
-          printf("Resource packet received\n");
-        }
-        handleResourcePacket(packetBuffer, debugFlag);
-
-        break;
-
-        default:
+    struct PacketFields packetFields;
+    readPacket(packet, &packetFields, debugFlag);
+    int packetType = getPacketType(packetFields.type);
+    switch(packetType) {
+      // Connection
+      case 0:
+      if (debugFlag) {
+        printf("Connection packet received\n");
       }
+      break;
 
+      // Status
+      case 1:
+      if (debugFlag) {
+        printf("Status packet received\n");
+      }
+      handleStatusPacket(serverAddress, debugFlag);
+      break;
+
+      // Resource
+      case 2:
+      if (debugFlag) {
+        printf("Resource packet received\n");
+      }
+      handleResourcePacket(packetBuffer, debugFlag);
+      break;
+
+      default:
     }
   }
 	return 0;
@@ -165,7 +167,7 @@ void receiveMessageFromServer() {
   * Purpose: Get the available resources on the client and add them to the available
   * resources string.
   * Input: 
-  * - String to put the available resources in
+  * - String to store the available resources in
   * - Name of the directory where the available resources are located
   * Output:
   * - -1: Error
@@ -241,12 +243,20 @@ int sendConnectionPacket(struct sockaddr_in serverAddress, bool debugFlag) {
 void sendResourcePacket(struct sockaddr_in serverAddress, bool debugFlag) {
   struct PacketFields packetFields;
   strcpy(packetFields.type, "resource");
+  strcpy(packetFields.data, "dummyfield");
   char* packet = calloc(1, MAX_PACKET);
   buildPacket(packet, packetFields, debugFlag);
   sendUdpMessage(udpSocketDescriptor, serverAddress, packet, debugFlag);
   free(packet);
 }
 
+/*
+  * Purpose: Print out all available resources in a sent resource packet
+  * Input:
+  * - Resource packet
+  * - Debug flag
+  * Output: None
+*/
 void handleResourcePacket(char* packet, bool debugFlag) {
   char* packetCopy = calloc(1, MAX_PACKET);
   char* packetCopyBeginning = packetCopy;
@@ -262,6 +272,7 @@ void handleResourcePacket(char* packet, bool debugFlag) {
     memset(field, 0, strlen(field));
     packetCopy = readPacketField(packetCopy, field, debugFlag);
 
+    // First field
     if (fieldCount == 0) {
       strcpy(username, field);
       printf("Username: %s\n", username);
@@ -291,7 +302,7 @@ void handleResourcePacket(char* packet, bool debugFlag) {
 
 /*
   * Purpose: When the client receives a status packet, send one back. The data field of this packet
-  * doesn't matter too much as the client just needs to response to be considered still connected to the server.
+  * doesn't matter too much as the client just needs to respond to be considered still connected to the server.
   * Input: 
   * - Address of server to send the response status packet to
   * - Debug flag
@@ -328,10 +339,12 @@ void setUsername(char* username) {
     char* userInput = calloc(1, MAX_USER_INPUT);
     getUserInput(userInput);
 
+    // System
     if (strcmp(userInput, "0") == 0) {
       strcpy(username, getenv("USER"));
       printf("System username chosen, welcome %s\n", username);
     }
+    // Custom
     else if (strcmp(userInput, "1") == 0) {
       memset(userInput, 0, MAX_USER_INPUT);
       printf("Custom username chosen, please enter custom username:\n");

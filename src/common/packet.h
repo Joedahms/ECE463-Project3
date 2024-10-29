@@ -15,10 +15,11 @@
 
 static const char* packetTypes[NUM_PACKET_TYPES] = {"connection", "status", "resource"};
 
-// Strings designating certain points in the packet
 struct PacketDelimiters {
-  int middleLength;
-  char middle[1];
+  int fieldLength;
+  char field[1];
+  int subfieldLength;
+  char subfield[1];
   int endLength;
   char end[9];
 };
@@ -28,11 +29,12 @@ struct PacketFields {
   char data[MAX_DATA];
 };
 
-int getPacketType(const char*);
+int getPacketType(const char*, bool);
 void buildPacket(char*, struct PacketFields, bool);
-int readPacket(char*, struct PacketFields*);
+int readPacket(char*, struct PacketFields*, bool);
 
-bool checkEnd(char*);
-char* readPacketField(char*, char*, bool);
+static bool checkEnd(char*);
+static char* readPacketField(char*, char*, bool);
+void readPacketSubField(char*, char*, bool);
 
 #endif

@@ -7,6 +7,7 @@
 
 #include "packet.h"
 
+/*
 // Strings designating certain points in the packet
 struct PacketDelimiters packetDelimiters = {
   1,
@@ -14,6 +15,16 @@ struct PacketDelimiters packetDelimiters = {
   9,
   "endpacket" // end
 };
+*/
+
+struct PacketDelimiters packetDelimiters = {
+  1,
+  "$",          // field
+  1,
+  "&",          // subfield
+  9,
+  "endpacket"   // end
+}
 
 /*
   * Purpose: Get the type of a packet based on the first field of the packet
@@ -26,18 +37,7 @@ struct PacketDelimiters packetDelimiters = {
   * 2 = resource
   * Notes: Might look at using an enum for packet type
 */
-int getPacketType(const char* packet) {
-  char* packetCopy = calloc(1, MAX_PACKET);
-  char* packetCopyStart = packetCopy;
-  strcpy(packetCopy, packet);
-
-  char* packetType = calloc(1, MAX_PACKET_TYPE);
-
-  while (strncmp(packetCopy, packetDelimiters.middle, 1) != 0) {
-    strncat(packetType, packetCopy, 1);
-    packetCopy++;
-  }
-
+int getPacketType(const char* packet, bool debugFlag) {
   int returnVal = -1;
   int i = 0;
   for (i = 0; i < NUM_PACKET_TYPES; i++) {
@@ -46,8 +46,6 @@ int getPacketType(const char* packet) {
     }
   }
 
-  free(packetCopyStart);
-  free(packetType);
   return returnVal;
 }
 
@@ -61,17 +59,18 @@ int getPacketType(const char* packet) {
   * Output: None
 */
 void buildPacket(char* builtPacket, struct PacketFields packetFields, bool debugFlag) {
-  // Type and a middle
+  // Type
   strcpy(builtPacket, packetFields.type);
-  strncat(builtPacket, packetDelimiters.middle, packetDelimiters.middleLength);
+  strncat(builtPacket, packetDelimiters.field, packetDelimiters.fieldLength);
   if (debugFlag) {
-    printf("Packet after adding beginning and a middle: %s\n", builtPacket);
+    printf("Packet after adding type: %s\n", builtPacket);
   }
 
   // Data
   strcat(builtPacket, packetFields.data);
+  strncat(builtPacket, packetDelimiters.field, packetDelimiters.fieldLength);
   if (debugFlag) {
-    printf("Packet after adding data and a middle: %s\n", builtPacket);
+    printf("Packet after adding data: %s\n", builtPacket);
   }
 
   // End
@@ -88,35 +87,22 @@ void buildPacket(char* builtPacket, struct PacketFields packetFields, bool debug
   * - String containing the packet that was sent
   * - Struct to put the read out fields into
   * Output:
-  * - -1: Packet invalid. Error could be on client's end or in transmission
-  * - 0: Valid packet
+  * - 0
 */
-int readPacket(char* packetToBeRead, struct PacketFields* packetFields) {
-  const char* middle = packetDelimiters.middle;
-  const char* end = packetDelimiters.end;
-  const int endLength = packetDelimiters.endLength;
+int readPacket(char* packetToBeRead, struct PacketFields* packetFields, bool debugFlag) {
+  char* packet = calloc(1, MAX_PACKET);
+  char* packetStart = packet;
+  strcpy(packet, packetToBeRead);
 
   // Type
-  while (strncmp(packetToBeRead, middle, 1) != 0) {
-    strncat(packetFields->type, packetToBeRead, 1);
-    packetToBeRead++;
-  }
-  packetToBeRead++; // Past middle delimiter
+  readPacketField(packet, packetFields->type, debugFlag);
 
   // Data
-  bool atEnd = false;
-  while (!atEnd) {
-    while (strncmp(packetToBeRead, middle, 1) != 0) {
-      strncat(packetFields->data, packetToBeRead, 1);
-      packetToBeRead++;
-    }
-    packetToBeRead++;
-
-    if (strncmp(packetToBeRead, end, endLength) == 0) {
-      atEnd = true;
-    }
+  while (checkEnd(packet) == false) {
+    readPacketField(packet, packetFields->data, debugFlag);
   }
 
+  free(packetStart);
   return 0;
 }
 
@@ -128,7 +114,7 @@ int readPacket(char* packetToBeRead, struct PacketFields* packetFields) {
   * 0: Not at the end of data
   * 1: At the end of data
 */
-bool checkEnd(char* packet) {
+static bool checkEnd(char* packet) {
   if (strncmp(packet, packetDelimiters.end, packetDelimiters.endLength) == 0) {
     return true;
   }
@@ -144,19 +130,35 @@ bool checkEnd(char* packet) {
   * - Debug flag
   * Output: The packet after reading the field from it
 */
-char* readPacketField(char* packet, char* field, bool debugFlag) {
+static char* readPacketField(char* packet, char* field, bool debugFlag) {
   if (debugFlag) {
-    printf("Reading field from packet: %s\n", packet);     
+    printf("Reading field from packet: %s\n", packet);
   }
 
-  while(strncmp(packet, packetDelimiters.middle, 1) != 0) {
+  while(strncmp(packet, packetDelimiters.field, packetDelimiters.fieldLength) != 0) {
     strncat(field, packet, 1);
     packet++;
   }
-  packet++;
+  packet += packetDelimiters.fieldLength;
 
   if (debugFlag) {
     printf("Field read: %s\n", field);
   }
   return packet;
+}
+
+void readPacketSubfield(char* packetField, char* packetSubfield, bool debugFlag) {
+  if (debugFlag) {
+    printf("Reading subfield from packet field: %s\n", packetField);
+  }
+
+  while(strncmp(packetField, packetDelimiters.subfield, packetDelimiters.subfieldLength) != 0) {
+    strncat(packetSubfield, packetField, 1);
+    packetField++;
+  }
+  packetField += packetDelimiters.subfieldLength;
+
+  if (debugFlag) {
+    printf("Subfield read: %s\n", field);
+  }
 }

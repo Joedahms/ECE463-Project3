@@ -19,11 +19,11 @@ char* makeResourceString(char*, struct Resource*, char*);
 
 // Print
 void printAllResources(struct Resource*);
-void printResourceInfo(struct Resource*, char*);
+static void printResourceInfo(struct Resource*, char*);
 
 // Remove
 struct Resource* removeUserResources(char*, struct Resource*, bool);
-struct Resource* removeHeadResource(struct Resource*, bool);
-struct Resource* removeNonHeadResource(struct Resource*, struct Resource*, bool*, bool);
+static struct Resource* removeHeadResource(struct Resource*, bool);
+static struct Resource* removeNonHeadResource(struct Resource*, struct Resource*, bool*, bool);
 
 #endif
