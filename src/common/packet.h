@@ -29,12 +29,11 @@ struct PacketFields {
   char data[MAX_DATA];
 };
 
-int getPacketType(const char*, bool);
+int getPacketType(char*, bool);
 void buildPacket(char*, struct PacketFields, bool);
-int readPacket(char*, struct PacketFields*, bool);
 
-static bool checkEnd(char*);
-static char* readPacketField(char*, char*, bool);
-void readPacketSubField(char*, char*, bool);
+int readPacket(char*, struct PacketFields*, bool);
+char* readPacketField(char*, char*, bool);
+char* readPacketSubfield(char*, char*, bool);
 
 #endif

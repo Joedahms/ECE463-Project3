@@ -7,16 +7,6 @@
 
 #include "packet.h"
 
-/*
-// Strings designating certain points in the packet
-struct PacketDelimiters packetDelimiters = {
-  1,
-  "$",        // middle
-  9,
-  "endpacket" // end
-};
-*/
-
 struct PacketDelimiters packetDelimiters = {
   1,
   "$",          // field
@@ -24,12 +14,28 @@ struct PacketDelimiters packetDelimiters = {
   "&",          // subfield
   9,
   "endpacket"   // end
+};
+
+/*
+  * Purpose: Check if at the end of the data field of a packet
+  * Input: 
+  * - The packet to check if at the end of
+  * Output:
+  * 0: Not at the end of data
+  * 1: At the end of data
+*/
+static bool checkEnd(char* packet) {
+  if (strncmp(packet, packetDelimiters.end, packetDelimiters.endLength) == 0) {
+    return true;
+  }
+  return false;
 }
 
 /*
-  * Purpose: Get the type of a packet based on the first field of the packet
+  * Purpose: Take in the type of the packet as a string and return an integer associated
+  * with that packet type.
   * Input:
-  * - The packet to get the type of
+  * - The type of the packet as a string
   * Output: Integer representing the type of the packet
   * -1 = invalid
   * 0 = connection
@@ -37,7 +43,7 @@ struct PacketDelimiters packetDelimiters = {
   * 2 = resource
   * Notes: Might look at using an enum for packet type
 */
-int getPacketType(const char* packet, bool debugFlag) {
+int getPacketType(char* packetType, bool debugFlag) {
   int returnVal = -1;
   int i = 0;
   for (i = 0; i < NUM_PACKET_TYPES; i++) {
@@ -45,7 +51,6 @@ int getPacketType(const char* packet, bool debugFlag) {
       returnVal = i;
     }
   }
-
   return returnVal;
 }
 
@@ -94,43 +99,26 @@ int readPacket(char* packetToBeRead, struct PacketFields* packetFields, bool deb
   char* packetStart = packet;
   strcpy(packet, packetToBeRead);
 
-  // Type
-  readPacketField(packet, packetFields->type, debugFlag);
+  // Type. Advance after reading type (set packet to return val) so that data can be read.
+  packet = readPacketField(packet, packetFields->type, debugFlag);
 
   // Data
-  while (checkEnd(packet) == false) {
-    readPacketField(packet, packetFields->data, debugFlag);
-  }
+  readPacketField(packet, packetFields->data, debugFlag);
 
   free(packetStart);
   return 0;
 }
 
 /*
-  * Purpose: Check if at the end of the data field of a packet
-  * Input: 
-  * - The packet
-  * Output:
-  * 0: Not at the end of data
-  * 1: At the end of data
-*/
-static bool checkEnd(char* packet) {
-  if (strncmp(packet, packetDelimiters.end, packetDelimiters.endLength) == 0) {
-    return true;
-  }
-  return false;
-}
-
-/*
   * Purpose: Read a single field from a packet. Reads the packet string until the field
-  * delimiter is hit.
+  * delimiter is hit. Field is returned in second argument. 
   * Input: 
   * - The packet to read the field from
-  * - String to return the field in
+  * - Memory allocated for the field
   * - Debug flag
-  * Output: The packet after reading the field from it
+  * Output: Packet after reading a field from it
 */
-static char* readPacketField(char* packet, char* field, bool debugFlag) {
+char* readPacketField(char* packet, char* field, bool debugFlag) {
   if (debugFlag) {
     printf("Reading field from packet: %s\n", packet);
   }
@@ -147,18 +135,27 @@ static char* readPacketField(char* packet, char* field, bool debugFlag) {
   return packet;
 }
 
-void readPacketSubfield(char* packetField, char* packetSubfield, bool debugFlag) {
+/*
+  * Purpose: Read a subfield from a packet.
+  * Input: 
+  * - Field to read the subfield from
+  * - Memory allocated for the subfield
+  *
+  * Output: Field after reading a subfield from it
+*/
+char* readPacketSubfield(char* field, char* subfield, bool debugFlag) {
   if (debugFlag) {
-    printf("Reading subfield from packet field: %s\n", packetField);
+    printf("Reading subfield from packet field: %s\n", field);
   }
 
-  while(strncmp(packetField, packetDelimiters.subfield, packetDelimiters.subfieldLength) != 0) {
-    strncat(packetSubfield, packetField, 1);
-    packetField++;
+  while(strncmp(field, packetDelimiters.subfield, packetDelimiters.subfieldLength) != 0) {
+    strncat(subfield, field, 1);
+    field++;
   }
-  packetField += packetDelimiters.subfieldLength;
+  field += packetDelimiters.subfieldLength;
 
   if (debugFlag) {
-    printf("Subfield read: %s\n", field);
+    printf("Subfield read: %s\n", subfield);
   }
+  return field;
 }
