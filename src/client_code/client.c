@@ -1,5 +1,3 @@
-#define FILE_NAME_SIZE 50
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -21,7 +19,7 @@
 // Global so that signal handler can free resources
 int udpSocketDescriptor;
 char* userInput;
-char* packetBuffer;
+char* packet;
 
 // Packet delimiters that are constant for all packets
 // See packet.h & packet.c
@@ -53,7 +51,7 @@ int main(int argc, char* argv[]) {
 
   fd_set read_fds;
   userInput = calloc(1, MAX_USER_INPUT);
-  packetBuffer = calloc(1, MAX_PACKET);
+  packet = calloc(1, MAX_PACKET);
 
   // Loop to handle user input and incoming packets
   while(1) {
@@ -81,41 +79,48 @@ int main(int argc, char* argv[]) {
         continue;
       }
     }
+
+    // No message in UDP queue
+    if (!(FD_ISSET(udpSocketDescriptor, &read_fds))) {
+      continue;
+    }
+
     // Message in UDP queue
-    if (FD_ISSET(udpSocketDescriptor, &read_fds)) {
-      int bytesReceived = recvfrom(udpSocketDescriptor, packetBuffer, MAX_PACKET, 0, NULL, NULL);
+    if (debugFlag) {
+      printf("Packet received\n");
+    }
+    int bytesReceived = recvfrom(udpSocketDescriptor, packet, MAX_PACKET, 0, NULL, NULL);
 
-      int packetType = getPacketType(packetBuffer);
-      switch(packetType) {
-        // Connection
-        case 0:
-        if (debugFlag) {
-          printf("Connection packet received\n");
-        }
+    struct PacketFields packetFields;
+    memset(&packetFields, 0, sizeof(packetFields));
+    readPacket(packet, &packetFields, debugFlag);
 
-        break;
-
-        // Status
-        case 1:
-        if (debugFlag) {
-          printf("Status packet received\n");
-        }
-        handleStatusPacket(serverAddress, debugFlag);
-
-        break;
-
-        // Resource
-        case 2:
-        if (debugFlag) {
-          printf("Resource packet received\n");
-        }
-        handleResourcePacket(packetBuffer, debugFlag);
-
-        break;
-
-        default:
+    int packetType = getPacketType(packetFields.type, debugFlag);
+    switch(packetType) {
+      // Connection
+      case 0:
+      if (debugFlag) {
+        printf("Type of packet recieved is connection\n");
       }
+      break;
 
+      // Status
+      case 1:
+      if (debugFlag) {
+        printf("Type of packet received is status\n");
+      }
+      handleStatusPacket(serverAddress, debugFlag);
+      break;
+
+      // Resource
+      case 2:
+      if (debugFlag) {
+        printf("Type of packet received is Resource\n");
+      }
+      handleResourcePacket(packetFields.data, debugFlag);
+      break;
+
+      default:
     }
   }
 	return 0;
@@ -128,7 +133,7 @@ int main(int argc, char* argv[]) {
  */
 void shutdownClient(int signal) {
   free(userInput);
-  free(packetBuffer);
+  free(packet);
   close(udpSocketDescriptor);
   printf("\n");
   exit(0);
@@ -136,7 +141,7 @@ void shutdownClient(int signal) {
 
 /*
   * Purpose: Get user input from standard in and remove the newline
-  * Input: Buffer to store user input in
+  * Input: String to store user input in
   * Output: None
 */
 void getUserInput(char* userInput) {
@@ -145,28 +150,11 @@ void getUserInput(char* userInput) {
 }
 
 /*
-  * Purpose: Receive a UDP message from the server
-  * Input: None
-  * Output: None
-*/
-void receiveMessageFromServer() {
-    char buffer[MAX_USER_INPUT];
-    memset(buffer, 0, sizeof(buffer));  // Clear the buffer before receiving a new message
-    int bytesReceived = recvfrom(udpSocketDescriptor, buffer, MAX_USER_INPUT, 0, NULL, NULL);
-    if (bytesReceived > 0) {
-        buffer[bytesReceived] = '\0';   // Null-terminate the received string
-        printf("Message from server: %s\n", buffer);
-    } else {
-        perror("Error receiving message from server");
-    }
-}
-
-/*
   * Purpose: Get the available resources on the client and add them to the available
   * resources string.
   * Input: 
-  * - String to put the available resources in
-  * - Name of the directory where the available resources are located
+  * - String to store the available resources in
+  * - Path to the directory where the available resources are located
   * Output:
   * - -1: Error
   * - 0: Success
@@ -177,23 +165,27 @@ int getAvailableResources(char* availableResources, const char* directoryName) {
     return -1;
     perror("Error opening resource directory");
   }
+
+  // Loop through entire directory
   struct dirent* directoryEntry;
-  while((directoryEntry = readdir(directoryStream)) != NULL) {        // Loop through the entire resource directory
+  while((directoryEntry = readdir(directoryStream)) != NULL) {
     const char* entryName = directoryEntry->d_name;
-    if (strcmp(entryName, ".") == 0) {                                // Ignore current directory
+    // Ignore current directory
+    if (strcmp(entryName, ".") == 0) {
       continue;
     }
-    if (strcmp(entryName, "..") == 0) {                               // Ignore parent directory
+    // Ignore parent directory
+    if (strcmp(entryName, "..") == 0) {
       continue;
     }
-    strcat(availableResources, directoryEntry->d_name);               // Add the entry name to the available resources
-    strcat(availableResources, packetDelimiters.middle);
+    strcat(availableResources, entryName);
+    strcat(availableResources, packetDelimiters.subfield);
   } 
   return 0;
 }
 
 /*
-  * Purpose: Send a connection packet to the specified server
+  * Purpose: Send a connection packet to the specified server.
   * Input: 
   * - Socket address structure of the server to send the connection packet to
   * - Debug flag
@@ -211,7 +203,7 @@ int sendConnectionPacket(struct sockaddr_in serverAddress, bool debugFlag) {
   char* username = calloc(1, MAX_USERNAME);
   setUsername(username);
   strcpy(packetFields.data, username);
-  strncat(packetFields.data, packetDelimiters.middle, packetDelimiters.middleLength);
+  strncat(packetFields.data, packetDelimiters.subfield, packetDelimiters.subfieldLength);
   free(username);
 
   // Available resources
@@ -232,7 +224,7 @@ int sendConnectionPacket(struct sockaddr_in serverAddress, bool debugFlag) {
 
 /*
   * Purpose: Send a resource packet to the server. This indicates that the client would
-  * like to know all of the available resources on the network
+  * like to know all of the available resources on the network.
   * Input: 
   * - Address of server to send the packet to
   * - Debug flag
@@ -241,57 +233,63 @@ int sendConnectionPacket(struct sockaddr_in serverAddress, bool debugFlag) {
 void sendResourcePacket(struct sockaddr_in serverAddress, bool debugFlag) {
   struct PacketFields packetFields;
   strcpy(packetFields.type, "resource");
+  strcpy(packetFields.data, "dummyfield");
   char* packet = calloc(1, MAX_PACKET);
   buildPacket(packet, packetFields, debugFlag);
   sendUdpMessage(udpSocketDescriptor, serverAddress, packet, debugFlag);
   free(packet);
 }
 
-void handleResourcePacket(char* packet, bool debugFlag) {
-  char* packetCopy = calloc(1, MAX_PACKET);
-  char* packetCopyBeginning = packetCopy;
-  strcpy(packetCopy, packet);
-
-  // Don't care about packet type
-  char* field = calloc(1, MAX_DATA);
-  packetCopy = readPacketField(packetCopy, field, debugFlag);
-
-  int fieldCount = 0;
+/*
+  * Purpose: Print out all available resources in a sent resource packet
+  * Input:
+  * - Data field of the sent resource packet
+  * - Debug flag
+  * Output: None
+*/
+void handleResourcePacket(char* dataField, bool debugFlag) {
   char* username = calloc(1, MAX_USERNAME);
-  while (!checkEnd(packetCopy)) {
-    memset(field, 0, strlen(field));
-    packetCopy = readPacketField(packetCopy, field, debugFlag);
+  char* resourceSubfield = calloc(1, MAX_FILENAME);
 
+  int dataFieldLength = strlen(dataField);
+  int bytesRead = 0;
+  int fieldCount = 0;
+  while (bytesRead != dataFieldLength) {
+    memset(resourceSubfield, 0, strlen(resourceSubfield));
+    dataField = readPacketSubfield(dataField, resourceSubfield, debugFlag);
+    bytesRead += strlen(resourceSubfield) + packetDelimiters.subfieldLength;
+
+    // First field
     if (fieldCount == 0) {
-      strcpy(username, field);
+      strcpy(username, resourceSubfield);
       printf("Username: %s\n", username);
     }
 
     // Username
     if (fieldCount % 2 == 0) {
-      if (strcmp(username, field) == 0) {
+      // Don't duplicate username printout
+      if (strcmp(username, resourceSubfield) == 0) {
         ;
       }
       else {
-        strcpy(username, field);
+        strcpy(username, resourceSubfield);
         printf("Username: %s\n", username);
       }
     }
     // Filename
     else {
-      printf("Filename: %s\n", field);
+      printf("Filename: %s\n", resourceSubfield);
     }
     fieldCount++;
   }
 
-  free(packetCopyBeginning);
-  free(field);
   free(username);
+  free(resourceSubfield);
 }
 
 /*
   * Purpose: When the client receives a status packet, send one back. The data field of this packet
-  * doesn't matter too much as the client just needs to response to be considered still connected to the server.
+  * doesn't matter as the client just needs to respond to be considered still connected to the server.
   * Input: 
   * - Address of server to send the response status packet to
   * - Debug flag
@@ -300,10 +298,8 @@ void handleResourcePacket(char* packet, bool debugFlag) {
 void handleStatusPacket(struct sockaddr_in serverAddress, bool debugFlag) {
   struct PacketFields packetFields;
   memset(&packetFields, 0, sizeof(packetFields));
-
   strcpy(packetFields.type, "status");
   strcat(packetFields.data, "testing");
-  strcat(packetFields.data, "$");
 
   char* statusPacket = calloc(1, MAX_PACKET);
   buildPacket(statusPacket, packetFields, debugFlag);
@@ -328,10 +324,12 @@ void setUsername(char* username) {
     char* userInput = calloc(1, MAX_USER_INPUT);
     getUserInput(userInput);
 
+    // System
     if (strcmp(userInput, "0") == 0) {
       strcpy(username, getenv("USER"));
       printf("System username chosen, welcome %s\n", username);
     }
+    // Custom
     else if (strcmp(userInput, "1") == 0) {
       memset(userInput, 0, MAX_USER_INPUT);
       printf("Custom username chosen, please enter custom username:\n");
@@ -339,6 +337,7 @@ void setUsername(char* username) {
       strcpy(username, userInput);
       printf("Welcome %s\n", username);
     }
+    // Invalid
     else {
       printf("Invalid option chosen, please try again\n");
       validUsername = false;

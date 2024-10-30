@@ -1,5 +1,3 @@
-#define MAX_PACKET_LENGTH 5000  // Upper limit on packet size (bytes)
-
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,6 +59,7 @@ void sendUdpMessage(int udpSocketDescriptor, struct sockaddr_in destinationAddre
   if (debugFlag) {
     printf("Sending UDP message:\n");
     printf("%s\n", message);
+    printf("To %d:%d\n", ntohl(destinationAddress.sin_addr.s_addr), ntohs(destinationAddress.sin_port));
   }
 
   int sendtoReturn = 0;
@@ -224,7 +223,7 @@ int setupUdpSocket(struct sockaddr_in serverAddress, bool bindFlag) {
 */
 int checkUdpSocket(int listeningUDPSocketDescriptor, struct sockaddr_in* incomingAddress, char* message, bool debugFlag) {
   socklen_t incomingAddressLength = sizeof(incomingAddress);
-  int bytesReceived = recvfrom(listeningUDPSocketDescriptor, message, INITIAL_MESSAGE_SIZE, 0, (struct sockaddr *)incomingAddress, &incomingAddressLength);
+  int bytesReceived = recvfrom(listeningUDPSocketDescriptor, message, 250, 0, (struct sockaddr *)incomingAddress, &incomingAddressLength);
   int nonBlockingReturn = handleErrorNonBlocking(bytesReceived);
 
   // No incoming message

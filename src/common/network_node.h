@@ -9,9 +9,9 @@
 #define NETWORK_NODE_H
 
 #define PORT 3941                     // Port server is listening on
-#define FILE_NAME_SIZE 50             // Maximum file name length
-#define MAX_FILE_SIZE 5000            // Maximum file length
-#define INITIAL_MESSAGE_SIZE 200      // Max size of the initial calibration message
+#define MAX_FILENAME 50
+#define MAX_FILE_SIZE 5000
+#define INITIAL_MESSAGE_SIZE 200
 #define MAX_USER_INPUT 40             // Max size of message a user can input
 #define MAX_USERNAME 20               // Max size of a username
 #define MAX_RESOURCE_ARRAY 2000       // Max size of a string containing the available resources on a client

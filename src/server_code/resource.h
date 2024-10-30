@@ -1,6 +1,8 @@
 #ifndef RESOURCE_H
 #define RESOURCE_H
 
+#include <stdbool.h>
+
 #include "../common/network_node.h"
 #include "../common/packet.h"
 
@@ -8,12 +10,13 @@
 // in a linked list containing all available resources.
 struct Resource {
   char username[MAX_USERNAME];
-  char filename[FILE_NAME_SIZE];
+  char filename[MAX_FILENAME];
   struct Resource* next;
 };
 
 struct Resource* addResource(struct Resource*, char*, char*);
-void printAllResources(struct Resource*);
 char* makeResourceString(char*, struct Resource*, char*);
+void printAllResources(struct Resource*);
+struct Resource* removeUserResources(char*, struct Resource*, bool);
 
 #endif
